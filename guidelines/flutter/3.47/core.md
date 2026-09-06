@@ -1,7 +1,8 @@
 # Flutter 3.47
 
-Guidance for the 3.47 line specifically. This SDK ships Dart 3.13, so the
-language notes below do not apply to a 3.44 checkout of the same code.
+Guidance for the 3.47 line specifically, and only for what Flutter itself
+changed. This SDK ships Dart 3.13; that language and core-library guidance is
+composed separately as `dart/v3.13`, so it is not repeated here.
 
 ## `flutter pub get` rewrites `analysis_options.yaml`
 
@@ -33,17 +34,9 @@ compiled in from the pubspec `version:` field (or `--build-name` /
 plugin or reading `version.json` at runtime; both are `String?` and are `null`
 when the pubspec has no version.
 
-## Dart 3.13 language
+## `awaitNotRequired` comes from `foundation.dart`
 
-- Primary constructors are stable here. A value class can be one line, and
-  that is the preferred shape for one.
-- `package:flutter/foundation.dart` re-exports `awaitNotRequired`. Annotate a
-  `Future`-returning API that callers may legitimately fire and forget, rather
-  than spreading `unawaited(...)` across every call site.
-
-```dart
-// Primary constructor: no field declarations, no assignment boilerplate.
-class Money(final int cents, final String currency) {
-  String get formatted => '${cents / 100} $currency';
-}
-```
+`package:flutter/foundation.dart` re-exports `awaitNotRequired`, so a file that
+already imports `foundation.dart` needs no further import to use it. Annotate
+a `Future`-returning API that callers may legitimately fire and forget, rather
+than spreading `unawaited(...)` across every call site.
