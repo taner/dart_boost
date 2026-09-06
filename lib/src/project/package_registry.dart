@@ -29,7 +29,6 @@ abstract final class PackageRegistry {
     'hooks_riverpod': {'flutter_riverpod', 'riverpod'},
     'flutter_riverpod': {'riverpod'},
     'flutter_bloc': {'bloc'},
-    'hydrated_bloc': {'bloc'},
     'flutter_lints': {'lints'},
     'very_good_analysis': {'flutter_lints', 'lints'},
     'mocktail': {'mockito'},
@@ -65,11 +64,16 @@ abstract final class PackageRegistry {
   /// family at one directory is what makes [priorities] safe -- the rule picks
   /// which package supplies the version key, and the alias means the loser's
   /// guidance is not lost with it.
+  ///
+  /// `hydrated_bloc` is deliberately *not* here even though it also wraps
+  /// `bloc`: its majors run ahead on their own track (`hydrated_bloc` 11 pairs
+  /// with `bloc` 9, `hydrated_bloc` 9 with `bloc` 8), so aliasing it would ask
+  /// for `bloc/11/core.md` and silently drop the version guidance entirely.
+  /// Leaving it out lets `bloc` itself stay eligible and supply the real key.
   static const _aliases = <String, String>{
     'flutter_riverpod': 'riverpod',
     'hooks_riverpod': 'riverpod',
     'flutter_bloc': 'bloc',
-    'hydrated_bloc': 'bloc',
     'flutter_lints': 'lints',
   };
 
