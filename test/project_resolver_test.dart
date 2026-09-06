@@ -201,4 +201,20 @@ void main() {
     expect(resolved.warnings, isNotEmpty);
     expect(resolved.isFlutterProject, isTrue);
   });
+
+  test('a directory with no pubspec.yaml at all warns', () {
+    // Nothing downstream fails on this -- the composer still emits the
+    // unconditional fragments and the writers still create their files -- so
+    // without a warning, `install` run from the wrong directory reports
+    // success while describing a project that is not there.
+    final dir = fs.directory(root('somewhere'))..createSync(recursive: true);
+
+    final resolved = resolver.resolve(dir);
+
+    expect(resolved.pubspec, isNull);
+    expect(
+      resolved.warnings,
+      contains(allOf(contains('No pubspec.yaml'), contains('-C <path>'))),
+    );
+  });
 }

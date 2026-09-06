@@ -177,7 +177,21 @@ class ProjectResolver {
 
   Pubspec? _readPubspec(Directory dir, List<String> warnings) {
     final file = fileSystem.file(p.join(dir.path, 'pubspec.yaml'));
-    if (!file.existsSync()) return null;
+    if (!file.existsSync()) {
+      // Everything downstream degrades quietly on a missing pubspec: the
+      // composer still emits `foundation` and `dart`, and the writers still
+      // create CLAUDE.md and .mcp.json. So running `dart run dart_boost@
+      // install` from the wrong directory -- easy, since the remote-run form
+      // needs no pubspec of its own -- scatters three files somewhere that is
+      // not a package and reports success. Say so.
+      warnings.add(
+        'No pubspec.yaml in ${dir.path}. dart_boost keys its guidelines on a '
+        'project\'s resolved dependencies, so it has almost nothing to go on '
+        'here -- run it from a Dart or Flutter package root, or pass '
+        '-C <path>.',
+      );
+      return null;
+    }
     try {
       return Pubspec.parse(file.readAsStringSync(), lenient: true);
     } on Object catch (error) {
