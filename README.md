@@ -85,16 +85,20 @@ project actually resolved:
 guidelines/
   foundation.md          # always
   dart/core.md           # always
+  dart/3.13/core.md      # keyed on the resolved Dart SDK minor
   flutter/core.md        # any Flutter project
-  flutter/3.47/core.md   # keyed on the resolved SDK minor
+  flutter/3.47/core.md   # keyed on the resolved Flutter SDK minor
   riverpod/core.md       # any version of the package
   riverpod/3/core.md     # only when the resolved major is 3
   riverpod/3/testing.md  # extra fragments in a version directory also land
 ```
 
 **The version key is the major** — except below `1.0.0`, where pub treats the
-*minor* as the breaking axis, so `0.4.2` keys on `0.4`. Flutter is keyed on the
-SDK minor instead, because that is where its API moves.
+*minor* as the breaking axis, so `0.4.2` keys on `0.4`. The two SDKs are keyed
+on the minor instead — `3.13.2` keys on `3.13` — because that is where their
+APIs move. The Dart key applies to *every* project, not just Flutter ones: a
+Dart-only project has no Flutter version to key on, and language features still
+arrive in a particular release.
 
 There is deliberately **no range matching and no fallback to a nearest-lower
 version**. A missing version directory contributes nothing. Guessing that
@@ -121,7 +125,7 @@ genuinely disagree.
 
 | Fragments | Version directories |
 | --- | --- |
-| `foundation`, `dart` | always composed |
+| `foundation`, `dart` | always composed; `dart` additionally keyed `3.12`, `3.13` (SDK minor) |
 | `flutter` | `3.44`, `3.47` (SDK minor) |
 | `riverpod` (incl. `flutter_riverpod`, `hooks_riverpod`) | `2`, `3` — each with a `testing` fragment |
 | `bloc` (incl. `flutter_bloc`) | `7`, `8`, `9` |
@@ -133,7 +137,7 @@ genuinely disagree.
 | `json_serializable` | unversioned |
 | `testing`, `fvm`, `melos` | when the project has tests, an FVM pin, or a Melos workspace |
 
-38 fragments in all. Version directories exist only where the API actually
+40 fragments in all. Version directories exist only where the API actually
 diverged.
 
 ## FVM and monorepos
@@ -247,6 +251,40 @@ Sources are layered `user overrides → core → conditional → detected packag
 third-party`, and the output carries `=== <key> rules ===` separators so you can
 see which fragment produced which guidance.
 
+## Skills hand-off
+
+dart_boost writes guidelines and MCP config; `package:skills` fetches the agent
+skills your dependencies ship. The two are complementary and deliberately not
+merged, so after a successful install dart_boost offers the other half rather
+than reimplementing it:
+
+```sh
+$ dart run dart_boost@ install
+...
+package:skills is a dependency of this project. Run `dart run skills get` to
+fetch the skills your dependencies ship?
+> Yes  No
+```
+
+How it is invoked depends on where `skills` already is: a resolved dependency
+of the project runs `dart run skills get`, and a `skills` on `PATH` runs
+`skills get`. Neither touches the network. The remote form, `dart run skills@
+get`, resolves and downloads a package from pub.dev, so it is reachable **only**
+behind an explicit `--skills` — `--yes` and CI accept the locally resolvable
+forms and nothing else, because downloading a package is not something to do on
+a machine that never asked for it. `--no-skills` suppresses the hand-off
+entirely.
+
+Running it is remembered in `dart_boost.json` as `delegateSkills`, so `update`
+repeats it without asking again. Declining is remembered too — as a no, so the
+question comes back next time rather than being settled forever. A hand-off
+that could not run, or that failed, leaves the previous answer alone.
+
+**It never fails an install.** `skills` being absent, declined, or exiting
+non-zero is reported and nothing more: the guidelines and MCP config are
+already on disk, and an install that wrote every file it promised has
+succeeded.
+
 ## Commands
 
 ```sh
@@ -260,8 +298,8 @@ Global flags: `-C, --directory <path>`, `--dry-run`, `--verbose`, `--version`,
 `--probe-sdk`.
 
 `install` and `update` take `--agents=<keys>`, `--yes`, `--no-guidelines`,
-`--no-mcp` and `--trust=<packages>`. `compose` takes `--keys` to list what
-matched instead of printing the text.
+`--no-mcp`, `--trust=<packages>` and `--[no-]skills`. `compose` takes `--keys`
+to list what matched instead of printing the text.
 
 Start with `doctor` if anything surprises you: it prints every resolved fact
 next to the file it came from, so a wrong fragment is traceable to a wrong
@@ -269,6 +307,34 @@ lockfile rather than a mystery.
 
 Also installable as a dev dependency (`dart run dart_boost:install`) or globally
 (`dart pub global activate dart_boost`).
+
+### Prompts and CI
+
+Every prompt is skipped when there is no human to answer it: no TTY, or any of
+`CI`, `CONTINUOUS_INTEGRATION`, `BUILD_NUMBER`, `GITHUB_ACTIONS`, `GITLAB_CI`,
+`TF_BUILD` or `TEAMCITY_VERSION` set to anything other than `false` or `0`, or
+a bare `TERM=dumb`. A TTY alone is not enough to assume a human: CI runners
+routinely allocate one, which is exactly how a pipeline ends up blocked on a
+multiselect nobody can see. `CI=false` opts back in.
+
+Without a prompt the detected agents are used as they stand — the same thing
+`--yes` does — so `install` is safe to run unattended in a workflow.
+
+Interactively, `install` lists the files it is about to touch and asks once
+before writing any of them:
+
+```sh
+About to write
+  CLAUDE.md                    Claude Code
+  AGENTS.md                    GitHub Copilot, Codex
+  .mcp.json                    Claude Code MCP
+  .vscode/mcp.json             GitHub Copilot MCP
+Proceed?
+```
+
+That confirmation is skipped by `--yes`, by `--dry-run` (which writes nothing
+anyway), in CI, and by `update`, whose whole contract is to repeat the answers
+already on file without re-asking.
 
 ## State
 
@@ -282,6 +348,8 @@ can repeat it and report drift:
   "features": { "guidelines": true, "mcp": true },
   "thirdPartyPackages": ["serverpod"],
   "delegateSkills": false,
+  "dependencies": { "go_router": "18.2.0", "riverpod": "3.0.1" },
+  "fragments": ["foundation", "dart", "dart/v3.13", "go_router/core", "go_router/v18"],
   "lastRun": { "flutter": "3.47.2", "dart": "3.13.2", "boostVersion": "0.1.0" }
 }
 ```
@@ -289,6 +357,34 @@ can repeat it and report drift:
 Commit it. It is the record of what your team's agents were configured with,
 and `update` diffs against it — an SDK bump shows up as
 `Flutter 3.47.2 -> 3.44.9` rather than as guidance that quietly went stale.
+
+`dependencies` is the direct dependency set as the last run resolved it, name
+to version (`-` for an SDK, path or git dependency, which has none), and
+`fragments` is the keys that run actually composed. Together they let `update`
+report what moved, and what it meant:
+
+```sh
+Dependencies since the last run
++ go_router 18.2.0
+  riverpod 2.6.1 -> 3.0.1  (different guidance applies)
+- provider 6.1.2
+
+Guidance changes
+added: go_router/core, go_router/v18, riverpod/v3
+no longer applies: riverpod/v2
+```
+
+Only upgrades that move the fragment key are listed — `3.0.1 -> 3.0.2` changes
+nothing dart_boost composes and does not deserve a line — and *Guidance
+changes* is the honest answer to "so what?", since most packages have no
+fragment at all. Direct dependencies only: a transitive bump is pub's business,
+not something you did between two runs.
+
+Both keys are **nullable**, and `null` does not mean empty. A state file
+written before dart_boost recorded them has no baseline, so `update` says
+nothing about what changed rather than announcing every existing dependency as
+newly added; it notes that the next run will be able to diff, and writes both
+keys on its way out.
 
 ## Requirements
 
@@ -298,8 +394,8 @@ and Windows.
 ## Status
 
 0.1.0. The machinery is complete and tested; the fragment library is the part
-that keeps growing. Still to come: `skills` delegation, path-scoped rules, and
-coverage of more of the package ecosystem.
+that keeps growing. Still to come: path-scoped rules and coverage of more of
+the package ecosystem.
 
 ## License
 
