@@ -15,6 +15,14 @@
   `AsyncValue<T>` and let the widget `switch` on it.
 - Never mutate `state` in place. Assign a new value -- Riverpod compares with
   `==`, so an in-place `list.add` notifies nobody.
+- State transitions are named methods on the notifier. A widget calls
+  `ref.read(cartProvider.notifier).add(item)`; it never assembles the next
+  state itself and never writes `state` from outside the notifier.
+- `ref.watch(p)` inside a `Notifier.build` re-runs `build` and discards the
+  current state when `p` changes. That reset is the point; when you want the
+  dependency *without* it, read it inside the method that needs it.
+- Narrow rebuilds with `select` when a widget uses one field:
+  `ref.watch(userProvider.select((u) => u.name))`.
 - Register `ref.onDispose` for anything you own (subscriptions, timers,
   controllers) at the point you create it.
 
