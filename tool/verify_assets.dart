@@ -44,7 +44,7 @@ Future<void> main() async {
   // The dry run exits non-zero for unrelated reasons (a missing LICENSE, say),
   // and the manifest is printed either way -- so parse the output, do not gate
   // on the exit code.
-  final manifest = _parseManifest('${result.stdout}\n${result.stderr}');
+  final manifest = parseManifest('${result.stdout}\n${result.stderr}');
 
   if (manifest.isEmpty) {
     _fail(
@@ -76,15 +76,22 @@ Future<void> main() async {
 /// │   ├── dart
 /// │   │   └── core.md (1 KB)
 /// ```
-Set<String> _parseManifest(String output) {
+///
+/// Public so a test can feed it a captured manifest.
+Set<String> parseManifest(String output) {
   final entry = RegExp(
     r'^([\s│├└─|`+\\-]*)(?:├──|└──|\|--|`--) (.+?)(?: \(.*\))?$',
   );
   final stack = <String>[];
   final files = <String>{};
 
-  for (final line in output.split('\n')) {
-    final match = entry.firstMatch(line.trimRight());
+  for (final raw in output.split('\n')) {
+    // Trim once, up front. `pub` writes CRLF on Windows, and a `\r` left on
+    // the end defeats the `$`-anchored size probe below -- every file then
+    // reads as a directory, the manifest comes out empty, and the guard fails
+    // on the one platform whose packaging quirks it exists to catch.
+    final line = raw.trimRight();
+    final match = entry.firstMatch(line);
     if (match == null) continue;
 
     // Each level of the tree is four columns wide.

@@ -100,9 +100,14 @@ class FakeProject {
     'configVersion': 1,
   });
 
+  /// Values in [packages] are absolute directory paths. Pass [relative] to
+  /// write them the way pub actually does for the root package, path
+  /// dependencies and workspace members -- as a `rootUri` relative to
+  /// `.dart_tool/`.
   void packageConfig({
     Map<String, String> packages = const <String, String>{},
     String generatorVersion = '3.13.2',
+    bool relative = false,
   }) => writeJson('.dart_tool/package_config.json', <String, Object?>{
     'configVersion': 2,
     'generator': 'pub',
@@ -111,7 +116,19 @@ class FakeProject {
       for (final entry in packages.entries)
         <String, Object?>{
           'name': entry.key,
-          'rootUri': fileSystem.directory(entry.value).uri.toString(),
+          'rootUri':
+              relative
+                  ? p.url.joinAll(
+                    p
+                        .split(
+                          p.relative(
+                            entry.value,
+                            from: p.join(root.path, '.dart_tool'),
+                          ),
+                        )
+                        .followedBy(<String>['']),
+                  )
+                  : fileSystem.directory(entry.value).uri.toString(),
           'packageUri': 'lib/',
         },
     ],

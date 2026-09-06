@@ -1,3 +1,4 @@
+import 'package:file/file.dart';
 import 'package:path/path.dart' as p;
 
 import '../agents/agent.dart';
@@ -92,12 +93,7 @@ class Installer {
         context.fileSystem,
         dryRun: context.dryRun,
       );
-      // Group by resolved path so `AGENTS.md` is written exactly once.
-      final byPath = <String, List<Agent>>{};
-      for (final agent in plan.agents) {
-        final path = p.canonicalize(agent.guidelinesPath(project.root));
-        byPath.putIfAbsent(path, () => <Agent>[]).add(agent);
-      }
+      final byPath = groupGuidelineTargets(plan.agents, project.root);
       byPath.forEach((path, agents) {
         final outcome = writer.write(
           path: path,
@@ -149,4 +145,37 @@ class Installer {
       warnings: warnings,
     );
   }
+}
+
+/// Groups agents by the guidelines file they share, keyed so that the file is
+/// written exactly once.
+///
+/// Two separate requirements pull in opposite directions here. Seven of the
+/// nine agents read `AGENTS.md`, so the *key* has to be canonical or the
+/// sentinel block gets stacked seven deep. But the *path written* must not be
+/// canonical: `p.canonicalize` lower-cases on Windows, so canonicalizing the
+/// write target creates `claude.md` and `agents.md` there -- files that are
+/// found on a case-insensitive filesystem and then silently not found by any
+/// agent once the same repository is checked out on Linux or macOS.
+///
+/// So: key on the canonical form, write the spelling the agent declared.
+Map<String, List<Agent>> groupGuidelineTargets(
+  Iterable<Agent> agents,
+  Directory projectRoot, {
+  String Function(String path)? canonicalize,
+}) {
+  final canonical = canonicalize ?? p.canonicalize;
+  final declaredForKey = <String, String>{};
+  final byPath = <String, List<Agent>>{};
+
+  for (final agent in agents) {
+    final declared = agent.guidelinesPath(projectRoot);
+    final path = declaredForKey.putIfAbsent(
+      canonical(declared),
+      () => declared,
+    );
+    byPath.putIfAbsent(path, () => <Agent>[]).add(agent);
+  }
+
+  return byPath;
 }

@@ -177,7 +177,21 @@ class ProjectResolver {
 
   Pubspec? _readPubspec(Directory dir, List<String> warnings) {
     final file = fileSystem.file(p.join(dir.path, 'pubspec.yaml'));
-    if (!file.existsSync()) return null;
+    if (!file.existsSync()) {
+      // Everything downstream degrades quietly on a missing pubspec: the
+      // composer still emits `foundation` and `dart`, and the writers still
+      // create CLAUDE.md and .mcp.json. So running `dart run dart_boost@
+      // install` from the wrong directory -- easy, since the remote-run form
+      // needs no pubspec of its own -- scatters three files somewhere that is
+      // not a package and reports success. Say so.
+      warnings.add(
+        'No pubspec.yaml in ${dir.path}. dart_boost keys its guidelines on a '
+        'project\'s resolved dependencies, so it has almost nothing to go on '
+        'here -- run it from a Dart or Flutter package root, or pass '
+        '-C <path>.',
+      );
+      return null;
+    }
     try {
       return Pubspec.parse(file.readAsStringSync(), lenient: true);
     } on Object catch (error) {
@@ -330,7 +344,15 @@ class ProjectResolver {
     try {
       final decoded = jsonDecode(file.readAsStringSync());
       if (decoded is! Map<String, dynamic>) return <String, String>{};
-      final base = Uri.file(p.join(p.dirname(file.path), ''));
+      // `Uri.directory`, not `Uri.file`: pub writes a *relative* `rootUri`
+      // for the root package, for every path dependency and for every
+      // workspace member (hosted packages get an absolute one). Without the
+      // trailing separator a directory URI carries, `.dart_tool` is treated
+      // as the last *file* segment and `resolve('../vendor/x')` climbs one
+      // level too many -- landing outside the project entirely, so path deps
+      // get a `rootPath` that does not exist and their `guidelines/` tree is
+      // never discovered.
+      final base = Uri.directory(p.dirname(file.path));
       final result = <String, String>{};
       for (final entry
           in (decoded['packages'] as List?)

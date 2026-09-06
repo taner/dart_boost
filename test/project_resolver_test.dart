@@ -190,6 +190,30 @@ void main() {
     expect(resolved.packages['vendor_pkg']!.rootPath, vendor.path);
   });
 
+  test('resolves a relative rootUri against .dart_tool/, not its parent', () {
+    // Hosted packages get an absolute `rootUri`, but the root package, every
+    // path dependency and every workspace member get a relative one -- so
+    // this is the common case, not the exotic one. Resolving it against a
+    // base URI without a trailing separator climbs one directory too many and
+    // lands outside the project, which silently costs path dependencies their
+    // `guidelines/` discovery.
+    final vendor = fs.directory(root(p.join('app', 'vendor', 'evil')))
+      ..createSync(recursive: true);
+    final project =
+        FakeProject(fs, root('app'))
+          ..pubspec(dependencies: {'evil': '^1.0.0'})
+          ..lock({'evil': '1.0.0 direct main'})
+          ..packageConfig(packages: {'evil': vendor.path}, relative: true);
+
+    final resolved = resolver.resolve(project.root);
+
+    expect(resolved.packages['evil']!.rootPath, vendor.path);
+    expect(
+      fs.directory(resolved.packages['evil']!.rootPath!).existsSync(),
+      isTrue,
+    );
+  });
+
   test('a malformed lockfile is a warning, not a crash', () {
     final project =
         FakeProject(fs, root('app'))
@@ -200,5 +224,21 @@ void main() {
 
     expect(resolved.warnings, isNotEmpty);
     expect(resolved.isFlutterProject, isTrue);
+  });
+
+  test('a directory with no pubspec.yaml at all warns', () {
+    // Nothing downstream fails on this -- the composer still emits the
+    // unconditional fragments and the writers still create their files -- so
+    // without a warning, `install` run from the wrong directory reports
+    // success while describing a project that is not there.
+    final dir = fs.directory(root('somewhere'))..createSync(recursive: true);
+
+    final resolved = resolver.resolve(dir);
+
+    expect(resolved.pubspec, isNull);
+    expect(
+      resolved.warnings,
+      contains(allOf(contains('No pubspec.yaml'), contains('-C <path>'))),
+    );
   });
 }

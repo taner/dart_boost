@@ -1,4 +1,13 @@
+# Normalize to LF in the repository *and* in every working tree. GitHub's
+# Windows runners ship git with `core.autocrlf=true`, so without this the
+# Windows leg of the CI matrix tests a checkout artefact rather than the code,
+# and a fragment committed from Windows would ship CRLF inside the published
+# archive.
+* text=auto eol=lf
+
 # Splicer goldens encode their line endings deliberately -- one fixture pair
 # exists specifically to prove CRLF survives a splice. Git must not normalize
 # them, or the Windows leg of the CI matrix fails on a checkout artefact.
-test/fixtures/** -text
+# `!eol` is not redundant: it makes the eol setting *unspecified* for these
+# paths rather than leaving the `*` rule's `lf` visible on them.
+test/fixtures/** -text !eol

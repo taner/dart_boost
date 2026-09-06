@@ -81,15 +81,25 @@ class GuidelinesWriter {
     String guidelines, {
     required bool frontmatter,
   }) {
+    // Work in LF and restore the file's own endings at the end, the same deal
+    // the JSON and TOML splicers make. Rewriting a Windows user's CRLF file to
+    // LF is both a diff they did not ask for and, with `core.autocrlf`, a
+    // change git puts straight back -- so `install` would report a write on
+    // every single run.
+    final crlf = existing.contains('\r\n');
+    final source = crlf ? existing.replaceAll('\r\n', '\n') : existing;
+
     final replacement = '$openTag\n${guidelines.trim()}\n\n$closeTag';
-    final replaced = _block.hasMatch(existing);
+    final replaced = _block.hasMatch(source);
 
     final updated =
         replaced
-            ? existing.replaceFirst(_block, replacement)
-            : _append(existing, replacement, frontmatter: frontmatter);
+            ? source.replaceFirst(_block, replacement)
+            : _append(source, replacement, frontmatter: frontmatter);
 
-    final normalized = _normalize(updated);
+    var normalized = _normalize(updated);
+    if (crlf) normalized = normalized.replaceAll('\n', '\r\n');
+
     if (normalized == existing) {
       return _Composed(normalized, GuidelineWriteOutcome.unchanged);
     }
