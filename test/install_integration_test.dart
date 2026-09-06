@@ -44,7 +44,16 @@ void main() {
       ).run(args) ??
       0;
 
-  Future<void> flutterProject({String? claudeMd, String? mcpJson}) async {
+  /// [pathDependencies] maps a package name to its directory *relative to the
+  /// app*, and is written into all three places pub would write it: the
+  /// pubspec, the lockfile (as a `direct main` path source) and
+  /// `package_config.json` -- the last with a `rootUri` relative to
+  /// `.dart_tool/`, which is what pub emits for a path dependency.
+  Future<void> flutterProject({
+    String? claudeMd,
+    String? mcpJson,
+    Map<String, String> pathDependencies = const <String, String>{},
+  }) async {
     await d.dir('app', [
       d.file('pubspec.yaml', '''
 name: my_app
@@ -54,7 +63,7 @@ dependencies:
   flutter:
     sdk: flutter
   riverpod: ^3.0.0
-dev_dependencies:
+${pathDependencies.entries.map((e) => '  ${e.key}:\n    path: ${e.value}\n').join()}dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.4.0
@@ -85,7 +94,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.15.0"
-sdks:
+${pathDependencies.entries.map((e) => '  ${e.key}:\n    dependency: "direct main"\n    description:\n      path: "${e.value}"\n      relative: true\n    source: path\n    version: "1.0.0"\n').join()}sdks:
   dart: ">=3.5.0 <4.0.0"
 '''),
       d.dir('.dart_tool', [
@@ -96,7 +105,15 @@ sdks:
             'configVersion': 2,
             'generator': 'pub',
             'generatorVersion': '3.13.2',
-            'packages': <Object?>[],
+            'packages': <Object?>[
+              for (final entry in pathDependencies.entries)
+                <String, Object?>{
+                  'name': entry.key,
+                  // Relative to `.dart_tool/`, one level below the app.
+                  'rootUri': p.url.join('..', entry.value),
+                  'packageUri': 'lib/',
+                },
+            ],
           }),
         ),
       ]),
@@ -399,6 +416,131 @@ sdks:
         containsPair('lastRun', containsPair('flutter', '3.44.9')),
       );
     });
+  });
+
+  group('third-party guidelines', () {
+    /// A path dependency that ships a `guidelines/` tree, the way a package is
+    /// expected to contribute guidance.
+    ///
+    /// Path dependencies are the interesting case on purpose: pub writes them
+    /// a `rootUri` *relative* to `.dart_tool/`, so this exercises the
+    /// resolution discovery actually depends on rather than the absolute URI
+    /// only hosted packages get.
+    Future<void> vendorDependency({String? manifest}) async {
+      await d.dir('vendor', [
+        d.file(
+          'pubspec.yaml',
+          "name: vendor\nenvironment:\n  sdk: '>=3.5.0 <4.0.0'\n",
+        ),
+        d.dir('guidelines', [
+          d.file(
+            'core.md',
+            [
+              'Call `Vendor.init()` before `runApp`.',
+              '',
+              '<!--boost:if isFlutterProject-->',
+              'Wrap `MaterialApp` in a `VendorScope`.',
+              '<!--boost:end-->',
+              '',
+            ].join('\n'),
+          ),
+          if (manifest != null) d.file('manifest.yaml', manifest),
+        ]),
+      ]).create();
+      await flutterProject(
+        pathDependencies: const <String, String>{'vendor': '../vendor'},
+      );
+    }
+
+    test('are not read without an explicit opt-in', () async {
+      await vendorDependency();
+
+      final code = await run([
+        '-C',
+        appDir(),
+        'install',
+        '--agents=claude_code',
+        '--yes',
+      ]);
+
+      expect(code, 0, reason: output.join('\n'));
+      // Discovered -- so the relative `rootUri` did resolve -- but not read.
+      expect(output.join('\n'), contains('--trust=vendor'));
+      expect(read('CLAUDE.md'), isNot(contains('Vendor.init()')));
+      expect(
+        jsonDecode(read('dart_boost.json')),
+        containsPair('thirdPartyPackages', isEmpty),
+      );
+    });
+
+    test('--trust composes them and records the opt-in', () async {
+      await vendorDependency();
+
+      final code = await run([
+        '-C',
+        appDir(),
+        'install',
+        '--agents=claude_code',
+        '--yes',
+        '--trust=vendor',
+      ]);
+
+      expect(code, 0, reason: output.join('\n'));
+      final guidelines = read('CLAUDE.md');
+      // Keyed by package plus path within its guidelines/ tree, and rendered
+      // against this project's facts like any bundled fragment.
+      expect(guidelines, contains('=== vendor/core rules ==='));
+      expect(guidelines, contains('Call `Vendor.init()` before `runApp`.'));
+      expect(guidelines, contains('Wrap `MaterialApp` in a `VendorScope`.'));
+      expect(guidelines, isNot(contains('boost:if')));
+      // Nothing left to nag about.
+      expect(output.join('\n'), isNot(contains('--trust=')));
+      expect(
+        jsonDecode(read('dart_boost.json')),
+        containsPair('thirdPartyPackages', ['vendor']),
+      );
+    });
+
+    test('the opt-in survives into update, which never re-asks', () async {
+      await vendorDependency();
+      await run([
+        '-C',
+        appDir(),
+        'install',
+        '--agents=claude_code',
+        '--yes',
+        '--trust=vendor',
+      ]);
+
+      output.clear();
+      final code = await run(['-C', appDir(), 'update', '--yes']);
+
+      expect(code, 0, reason: output.join('\n'));
+      expect(read('CLAUDE.md'), contains('=== vendor/core rules ==='));
+      expect(output.join('\n'), isNot(contains('--trust=')));
+    });
+
+    test(
+      'a newer facts contract is skipped, and does not fail the install',
+      () async {
+        await vendorDependency(manifest: 'boost_facts_version: 99\n');
+
+        final code = await run([
+          '-C',
+          appDir(),
+          'install',
+          '--agents=claude_code',
+          '--yes',
+          '--trust=vendor',
+        ]);
+
+        expect(code, 0, reason: output.join('\n'));
+        expect(output.join('\n'), contains('facts version 99'));
+        expect(read('CLAUDE.md'), isNot(contains('Vendor.init()')));
+        // The rest of the composition is unaffected.
+        expect(read('CLAUDE.md'), contains('=== foundation rules ==='));
+      },
+    );
   });
 
   group('compose and doctor', () {
