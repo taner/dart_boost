@@ -6,6 +6,7 @@ import '../assets/bundled_assets.dart';
 import '../project/package_ref.dart';
 import '../project/package_registry.dart';
 import '../project/project.dart';
+import '../util/version_key.dart';
 import 'facts.dart';
 import 'markdown_formatter.dart';
 import 'renderer.dart';
@@ -101,6 +102,14 @@ class GuidelineComposer {
     // --- core (always) ---
     add('foundation', assets.fragment('foundation'));
     add('dart', assets.fragment('dart/core'));
+    // Keyed on the Dart SDK the same way Flutter is, and deliberately outside
+    // the `isFlutterProject` branch below: a Dart-only project has a Dart
+    // version too, and it is the only version-keyed guidance it can get.
+    final dartVersion = project.sdk.dart;
+    if (dartVersion != null) {
+      final sdkKey = sdkVersionKey(dartVersion);
+      add('dart/v$sdkKey', assets.fragment('dart/$sdkKey/core'));
+    }
 
     // --- conditional ---
     if (project.isFlutterProject) {

@@ -105,6 +105,12 @@ void main() {
     const expected = <String>[
       'foundation',
       'dart/core',
+      // The Dart SDK is version-keyed the same way Flutter is: 3.13 released
+      // primary constructors plus `List.unmodifiableOf`, `Map.unmodifiableOf`,
+      // `int.oneBitCount`, `int.trailingZeroBitCount` and `Future.pause`;
+      // 3.12 has none of them, and is where private named parameters landed.
+      'dart/3.12/core',
+      'dart/3.13/core',
       'flutter/core',
       // Version-keyed only where the SDKs actually diverge: 3.47 ships Dart
       // 3.13, the analysis_options migrator, the material_ui fix transform
@@ -147,8 +153,9 @@ void main() {
   });
 
   test('every bundled fragment is one the composer can reach', () async {
-    // The composer resolves SDK fragments as `flutter/<major>.<minor>/core`
-    // and package fragments as `<dir>/core`, `<dir>/<versionKey>/*`. A file
+    // The composer resolves SDK fragments as `<sdk>/<major>.<minor>/core` --
+    // `flutter/` keyed on the Flutter minor, `dart/` on the Dart one -- and
+    // package fragments as `<dir>/core`, `<dir>/<versionKey>/*`. A file
     // outside those shapes ships in the archive and is never composed, which
     // no other test would notice.
     final assets = (await BundledAssets.locate())!;
@@ -164,9 +171,9 @@ void main() {
 
       final reachable = switch (parts) {
         ['foundation'] => true,
-        // `flutter/3.47/core` only -- the composer adds no sibling files for
-        // the SDK the way it does for packages.
-        ['flutter', final version, 'core'] => RegExp(
+        // `flutter/3.47/core` and `dart/3.13/core` only -- the composer adds
+        // no sibling files for an SDK the way it does for packages.
+        ['flutter' || 'dart', final version, 'core'] => RegExp(
           r'^\d+\.\d+$',
         ).hasMatch(version),
         [_, 'core'] => true,
