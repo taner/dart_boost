@@ -96,6 +96,115 @@ void main() {
     expect(offenders, isEmpty);
   });
 
+  group('the shipped fragment tree', () {
+    // Adding a fragment is a deliberate act: it changes what every project
+    // using dart_boost is told. A new path has to appear here as well, which
+    // is the review prompt.
+    const expected = <String>[
+      'foundation',
+      'dart/core',
+      'flutter/core',
+      'flutter/3.44/core',
+      'flutter/3.47/core',
+      'fvm/core',
+      'melos/core',
+      'testing/core',
+      'riverpod/core',
+      'riverpod/2/core',
+      'riverpod/3/core',
+      'riverpod/3/testing',
+    ];
+
+    test('contains exactly the expected paths', () async {
+      final assets = (await BundledAssets.locate())!;
+      final onDisk =
+          assets.guidelines
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => p.extension(f.path) == '.md')
+              .map(
+                (f) => p
+                    .withoutExtension(
+                      p.relative(f.path, from: assets.guidelines.path),
+                    )
+                    .replaceAll(r'\', '/'),
+              )
+              .toList()
+            ..sort();
+
+      expect(onDisk, equals(expected.toList()..sort()));
+    });
+
+    for (final key in expected) {
+      test('$key resolves and carries content', () async {
+        final assets = (await BundledAssets.locate())!;
+        final file = assets.fragment(key);
+
+        expect(file, isNotNull, reason: '$key does not ship');
+
+        final source = file!.readAsStringSync();
+        expect(
+          source.trimLeft(),
+          startsWith('# '),
+          reason:
+              '$key needs a level-one heading; the composer prints the '
+              'key as a separator, not as a title',
+        );
+        // A fragment whose every line is a directive renders to nothing and
+        // is silently dropped, which is worse than failing here.
+        expect(
+          source
+              .split('\n')
+              .where(
+                (line) =>
+                    line.trim().isNotEmpty && !line.startsWith('<!--boost:'),
+              ),
+          isNotEmpty,
+        );
+      });
+    }
+  });
+
+  test('every bundled fragment is one the composer can reach', () async {
+    // The composer resolves SDK fragments as `flutter/<major>.<minor>/core`
+    // and package fragments as `<dir>/core`, `<dir>/<versionKey>/*`. A file
+    // outside those shapes ships in the archive and is never composed, which
+    // no other test would notice.
+    final assets = (await BundledAssets.locate())!;
+    final unreachable = <String>[];
+
+    for (final file
+        in assets.guidelines.listSync(recursive: true).whereType<File>()) {
+      if (p.extension(file.path) != '.md') continue;
+      final key = p
+          .withoutExtension(p.relative(file.path, from: assets.guidelines.path))
+          .replaceAll(r'\', '/');
+      final parts = key.split('/');
+
+      final reachable = switch (parts) {
+        ['foundation'] => true,
+        // `flutter/3.47/core` only -- the composer adds no sibling files for
+        // the SDK the way it does for packages.
+        ['flutter', final version, 'core'] => RegExp(
+          r'^\d+\.\d+$',
+        ).hasMatch(version),
+        [_, 'core'] => true,
+        [_, final version, _] => RegExp(
+          r'^(?:[1-9]\d*|0\.\d+)$',
+        ).hasMatch(version),
+        _ => false,
+      };
+
+      if (!reachable) unreachable.add(key);
+    }
+
+    expect(
+      unreachable,
+      isEmpty,
+      reason: 'these fragments ship but no composer lookup names them',
+    );
+  });
+
   test('the package version constant matches pubspec.yaml', () {
     final pubspec = loadYaml(
       File(p.join(_packageRoot(), 'pubspec.yaml')).readAsStringSync(),
