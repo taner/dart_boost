@@ -96,44 +96,25 @@ void main() {
     expect(offenders, isEmpty);
   });
 
-  group('the shipped fragment tree', () {
-    // Adding a fragment is a deliberate act: it changes what every project
-    // using dart_boost is told. A new path has to appear here as well, which
-    // is the review prompt.
+  group('the core fragment tree ships', () {
+    // One test per fragment path this card owns. Package fragments have their
+    // own tables in package_fragments_test and state_fragments_test, so this
+    // one deliberately does not assert the whole tree -- workers add fragments
+    // in parallel, and a tree-wide golden would make every one of them edit
+    // this file.
     const expected = <String>[
       'foundation',
       'dart/core',
       'flutter/core',
+      // Version-keyed only where the SDKs actually diverge: 3.47 ships Dart
+      // 3.13, the analysis_options migrator, the material_ui fix transform
+      // and appBuildName/appBuildNumber; 3.44 has none of them.
       'flutter/3.44/core',
       'flutter/3.47/core',
       'fvm/core',
       'melos/core',
       'testing/core',
-      'riverpod/core',
-      'riverpod/2/core',
-      'riverpod/3/core',
-      'riverpod/3/testing',
     ];
-
-    test('contains exactly the expected paths', () async {
-      final assets = (await BundledAssets.locate())!;
-      final onDisk =
-          assets.guidelines
-              .listSync(recursive: true)
-              .whereType<File>()
-              .where((f) => p.extension(f.path) == '.md')
-              .map(
-                (f) => p
-                    .withoutExtension(
-                      p.relative(f.path, from: assets.guidelines.path),
-                    )
-                    .replaceAll(r'\', '/'),
-              )
-              .toList()
-            ..sort();
-
-      expect(onDisk, equals(expected.toList()..sort()));
-    });
 
     for (final key in expected) {
       test('$key resolves and carries content', () async {
@@ -147,11 +128,11 @@ void main() {
           source.trimLeft(),
           startsWith('# '),
           reason:
-              '$key needs a level-one heading; the composer prints the '
-              'key as a separator, not as a title',
+              '$key needs a level-one heading; the composer prints the key as '
+              'a separator, not as a title',
         );
-        // A fragment whose every line is a directive renders to nothing and
-        // is silently dropped, which is worse than failing here.
+        // A fragment whose every line is a directive renders to nothing and is
+        // silently dropped, which is worse than failing here.
         expect(
           source
               .split('\n')
