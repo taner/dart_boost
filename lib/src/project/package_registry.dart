@@ -32,6 +32,14 @@ abstract final class PackageRegistry {
     'flutter_lints': {'lints'},
     'very_good_analysis': {'flutter_lints', 'lints'},
     'mocktail': {'mockito'},
+    // Generator/annotation pairs. The generator is the half whose major tracks
+    // the guidance -- `freezed` 4 ships with `freezed_annotation` 3, and
+    // `json_serializable` 6 with `json_annotation` 4 -- so it wins and the
+    // annotation package, aliased to the same directory, is dropped rather
+    // than version-keying the fragment off the wrong number.
+    'freezed': {'freezed_annotation'},
+    'json_serializable': {'json_annotation'},
+    'injectable': {'injectable_generator'},
   };
 
   /// Guidance for these is only emitted when the project asked for them.
@@ -43,6 +51,8 @@ abstract final class PackageRegistry {
     'build_runner',
     'collection',
     'dio',
+    'freezed_annotation',
+    'get_it',
     'http',
     'intl',
     'json_annotation',
@@ -75,6 +85,9 @@ abstract final class PackageRegistry {
     'hooks_riverpod': 'riverpod',
     'flutter_bloc': 'bloc',
     'flutter_lints': 'lints',
+    'freezed_annotation': 'freezed',
+    'json_annotation': 'json_serializable',
+    'injectable_generator': 'injectable',
   };
 
   static String guidelineName(String packageName) =>
