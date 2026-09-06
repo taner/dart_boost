@@ -1,11 +1,22 @@
 name: dart_boost
 description: >-
-  Version-aware AI coding guidelines and one-command multi-agent wiring for
-  Dart and Flutter projects. Composes project-tailored guidance from your
-  resolved dependency versions and configures the official `dart mcp-server`
-  into every AI agent you use.
+  Version-aware AI coding guidelines and one-command multi-agent wiring for Dart
+  and Flutter. Composes guidance from the versions your project resolved and
+  wires up dart mcp-server.
 version: 0.1.0
+homepage: https://github.com/taner/dart_boost
 repository: https://github.com/taner/dart_boost
+issue_tracker: https://github.com/taner/dart_boost/issues
+
+# pub.dev allows five. These are the axes someone would actually browse by:
+# what it wires up (mcp, ai, agent), and that it is a project-level dev tool
+# rather than a library you import (cli, tooling).
+topics:
+  - ai
+  - mcp
+  - agent
+  - cli
+  - tooling
 
 environment:
   # Floor set by cli_util >=0.5.1, the first release with `cli_components`.
