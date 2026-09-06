@@ -128,4 +128,41 @@ after
     expect(outcome, GuidelineWriteOutcome.created);
     expect(fs.file(path).existsSync(), isFalse);
   });
+
+  group('line endings', () {
+    test('preserves CRLF in a file that already uses it', () {
+      fs.file(path).writeAsStringSync('# My notes\r\n\r\nkeep these\r\n');
+
+      final outcome = writer.write(path: path, guidelines: 'generated');
+      final written = read();
+
+      expect(outcome, GuidelineWriteOutcome.created);
+      expect(written, contains('# My notes'));
+      expect(written, contains('<dart-boost-guidelines>'));
+      expect(
+        written.replaceAll('\r\n', ''),
+        isNot(contains('\n')),
+        reason: 'a CRLF file must not come back with LF lines mixed in',
+      );
+    });
+
+    test('a CRLF file is idempotent on the second run', () {
+      fs.file(path).writeAsStringSync('# My notes\r\n');
+
+      writer.write(path: path, guidelines: 'generated');
+      final first = read();
+      final second = writer.write(path: path, guidelines: 'generated');
+
+      expect(second, GuidelineWriteOutcome.unchanged);
+      expect(read(), first);
+    });
+
+    test('an LF file stays LF', () {
+      fs.file(path).writeAsStringSync('# My notes\n');
+
+      writer.write(path: path, guidelines: 'generated');
+
+      expect(read(), isNot(contains('\r')));
+    });
+  });
 }
