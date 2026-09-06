@@ -215,10 +215,7 @@ void main() {
 
   group('mustBeDirect', () {
     test('a transitive get_it contributes nothing', () {
-      expect(keysFor({'get_it': '9.2.1 transitive'}), [
-        'foundation',
-        'dart',
-      ]);
+      expect(keysFor({'get_it': '9.2.1 transitive'}), ['foundation', 'dart']);
     });
 
     test('a transitive dio contributes nothing', () {
