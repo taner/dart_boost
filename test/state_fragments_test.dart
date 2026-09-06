@@ -80,10 +80,11 @@ void main() {
       // directory holding only `testing.md` would emit guidance with no
       // statement of which major it is for.
       for (final dir in <String>['riverpod', 'bloc']) {
-        for (final version in assets.guidelines
-            .childDirectory(dir)
-            .listSync()
-            .whereType<Directory>()) {
+        for (final version
+            in assets.guidelines
+                .childDirectory(dir)
+                .listSync()
+                .whereType<Directory>()) {
           expect(
             assets.fragment('$dir/${version.basename}/core'),
             isNotNull,
@@ -97,10 +98,13 @@ void main() {
   group('riverpod routing', () {
     test('a riverpod 3 app gets only the v3 fragments', () {
       final keys = keysFor(
-        appWith({'flutter_riverpod': '^3.0.0'}, {
-          'flutter_riverpod': '3.4.3 direct main',
-          'riverpod': '3.4.3 transitive',
-        }),
+        appWith(
+          {'flutter_riverpod': '^3.0.0'},
+          {
+            'flutter_riverpod': '3.4.3 direct main',
+            'riverpod': '3.4.3 transitive',
+          },
+        ),
       );
 
       expect(keys, containsAll(<String>['riverpod/core', 'riverpod/v3']));
@@ -110,11 +114,14 @@ void main() {
 
     test('a riverpod 2 app gets only the v2 fragments', () {
       final keys = keysFor(
-        appWith({'hooks_riverpod': '^2.6.0'}, {
-          'hooks_riverpod': '2.6.1 direct main',
-          'flutter_riverpod': '2.6.1 transitive',
-          'riverpod': '2.6.1 transitive',
-        }),
+        appWith(
+          {'hooks_riverpod': '^2.6.0'},
+          {
+            'hooks_riverpod': '2.6.1 direct main',
+            'flutter_riverpod': '2.6.1 transitive',
+            'riverpod': '2.6.1 transitive',
+          },
+        ),
       );
 
       expect(
@@ -132,10 +139,10 @@ void main() {
   group('bloc routing', () {
     test('flutter_bloc supplies the version key for the bloc tree', () {
       final keys = keysFor(
-        appWith({'flutter_bloc': '^9.1.0'}, {
-          'flutter_bloc': '9.1.1 direct main',
-          'bloc': '9.2.1 transitive',
-        }),
+        appWith(
+          {'flutter_bloc': '^9.1.0'},
+          {'flutter_bloc': '9.1.1 direct main', 'bloc': '9.2.1 transitive'},
+        ),
       );
 
       expect(keys, containsAll(<String>['bloc/core', 'bloc/v9']));
@@ -145,10 +152,10 @@ void main() {
 
     test('a bloc 8 app gets the bloc 8 fragment', () {
       final keys = keysFor(
-        appWith({'flutter_bloc': '^8.1.0'}, {
-          'flutter_bloc': '8.1.6 direct main',
-          'bloc': '8.1.4 transitive',
-        }),
+        appWith(
+          {'flutter_bloc': '^8.1.0'},
+          {'flutter_bloc': '8.1.6 direct main', 'bloc': '8.1.4 transitive'},
+        ),
       );
 
       expect(keys, containsAll(<String>['bloc/core', 'bloc/v8']));
@@ -176,10 +183,7 @@ void main() {
         final keys = keysFor(
           appWith(
             {'hydrated_bloc': '^11.0.0'},
-            {
-              'hydrated_bloc': '11.0.0 direct main',
-              'bloc': '9.2.1 transitive',
-            },
+            {'hydrated_bloc': '11.0.0 direct main', 'bloc': '9.2.1 transitive'},
             flutter: false,
           ),
         );
@@ -189,23 +193,32 @@ void main() {
       },
     );
 
-    test('the hydrated_bloc section renders only when the package is there', () {
-      final withIt = keysFor(
-        appWith({'flutter_bloc': '^9.0.0', 'hydrated_bloc': '^11.0.0'}, {
-          'flutter_bloc': '9.1.1 direct main',
-          'hydrated_bloc': '11.0.0 direct main',
-          'bloc': '9.2.1 transitive',
-        }),
-      );
-      expect(withIt, contains('bloc/v9'));
+    test(
+      'the hydrated_bloc section renders only when the package is there',
+      () {
+        final withIt = keysFor(
+          appWith(
+            {'flutter_bloc': '^9.0.0', 'hydrated_bloc': '^11.0.0'},
+            {
+              'flutter_bloc': '9.1.1 direct main',
+              'hydrated_bloc': '11.0.0 direct main',
+              'bloc': '9.2.1 transitive',
+            },
+          ),
+        );
+        expect(withIt, contains('bloc/v9'));
 
-      // The flag itself is what the fragment branches on.
-      final project = ProjectResolver(
-        fileSystem: fs,
-        processRunner: FakeProcessRunner(),
-      ).resolve(fs.directory('/app'));
-      expect(GuidelineFacts.forProject(project).hasFlag('usesHydratedBloc'), isTrue);
-    });
+        // The flag itself is what the fragment branches on.
+        final project = ProjectResolver(
+          fileSystem: fs,
+          processRunner: FakeProcessRunner(),
+        ).resolve(fs.directory('/app'));
+        expect(
+          GuidelineFacts.forProject(project).hasFlag('usesHydratedBloc'),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('registry', () {
