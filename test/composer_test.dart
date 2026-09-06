@@ -119,6 +119,75 @@ void main() {
       expect(result.content, isNot(contains('newer')));
     });
 
+    test('a Dart-only project still gets Dart-SDK-keyed guidance', () {
+      // The whole point of the `dart/<minor>` lookup: nothing else in the
+      // tree is version-keyed for a project with no Flutter in it.
+      fragment('dart/core', '# Dart\nany version');
+      fragment('dart/3.12/core', '# Dart 3.12\nolder');
+      fragment('dart/3.13/core', '# Dart 3.13\nprimary constructors');
+
+      final project =
+          FakeProject(fs, at('app'))
+            ..pubspec(flutter: false)
+            ..lock({})
+            ..packageConfig(
+              packages: {'my_app': at('app')},
+              generatorVersion: '3.12.2',
+            );
+
+      final result = compose(resolve(project));
+
+      expect(result.keys, ['dart', 'dart/v3.12']);
+      expect(result.keys, isNot(contains('dart/v3.13')));
+      expect(result.content, isNot(contains('primary constructors')));
+    });
+
+    test('the Dart key is the patch-independent minor', () {
+      fragment('dart/3.13/core', '# Dart 3.13\nnewer');
+
+      final project =
+          FakeProject(fs, at('app'))
+            ..pubspec(flutter: false)
+            ..lock({})
+            ..packageConfig(
+              packages: {'my_app': at('app')},
+              generatorVersion: '3.13.9',
+            );
+
+      expect(compose(resolve(project)).keys, ['dart/v3.13']);
+    });
+
+    test('an unresolved Dart version keys nothing', () {
+      // No package_config.json, so no generatorVersion, so no Dart version --
+      // and a missing version must contribute nothing rather than guess.
+      fragment('dart/core', '# Dart\nany version');
+      fragment('dart/3.13/core', '# Dart 3.13\nnewer');
+
+      final project =
+          FakeProject(fs, at('app'))
+            ..pubspec(flutter: false)
+            ..lock({});
+
+      expect(compose(resolve(project)).keys, ['dart']);
+    });
+
+    test('a Flutter project gets both SDK keys', () {
+      fragment('flutter/3.47/core', '# Flutter 3.47');
+      fragment('dart/3.13/core', '# Dart 3.13');
+
+      final project =
+          FakeProject(fs, at('app'))
+            ..pubspec()
+            ..lock({})
+            ..dartToolVersion('3.47.2')
+            ..packageConfig(
+              packages: {'my_app': at('app')},
+              generatorVersion: '3.13.2',
+            );
+
+      expect(compose(resolve(project)).keys, ['dart/v3.13', 'flutter/v3.47']);
+    });
+
     test('picks up every other .md under the matched version directory', () {
       fragment('riverpod/3/core', '# Riverpod 3');
       fragment('riverpod/3/testing', '# Riverpod 3 testing');
