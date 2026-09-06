@@ -56,12 +56,24 @@ class TerminalDialogSupport implements DialogSupport {
     maxVisibleItems: 10,
   );
 
+  /// A two-option single-select rather than a `readLineSync` y/n.
+  ///
+  /// Not a style choice: [multiSelect] leaves a live broadcast subscription on
+  /// `stdin`, and `readLineSync` reads the same file descriptor synchronously.
+  /// Run one after the other -- which is exactly what `install` does -- and
+  /// the two race for the user's keystrokes. Going through `cli_components`
+  /// for both means one input stream, one raw-mode owner, and one place that
+  /// handles SIGINT.
+  ///
+  /// Cancelling (Esc, Ctrl-C) is always `false`, whatever [defaultValue] is:
+  /// interrupting a prompt is never consent. [defaultValue] instead decides
+  /// which option the cursor starts on.
   @override
   Future<bool> confirm(String question, {bool defaultValue = true}) async {
-    io.stdout.write('$question ${defaultValue ? '[Y/n]' : '[y/N]'} ');
-    final answer = io.stdin.readLineSync()?.trim().toLowerCase();
-    if (answer == null || answer.isEmpty) return defaultValue;
-    return answer == 'y' || answer == 'yes';
+    io.stdout.writeln(question);
+    final options = defaultValue ? const ['Yes', 'No'] : const ['No', 'Yes'];
+    final choice = await showSingleSelectDialog(options, _stream);
+    return choice != null && options[choice] == 'Yes';
   }
 
   Future<void> dispose() async {

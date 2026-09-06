@@ -71,6 +71,44 @@ class BoostContext {
         terminal.interactive ? terminal : const NonInteractiveDialogSupport();
   }
 
+  /// Whether a prompt may be shown at all.
+  ///
+  /// A TTY is necessary but not sufficient: CI runners frequently allocate one
+  /// (GitHub Actions' `docker run -t`, most self-hosted setups), so a
+  /// `hasTerminal` check alone is exactly how a release pipeline ends up
+  /// blocked on a multiselect nobody can answer. Checking the environment as
+  /// well is what `--yes` would otherwise have to do by hand in every job.
+  bool get interactive => !isCi && dialogs.interactive;
+
+  /// The environment variables that mean "no human is watching".
+  ///
+  /// `CI` is the near-universal one; the rest are vendors that historically
+  /// did not set it. A bare `TERM=dumb` also counts -- that is what a terminal
+  /// says when it cannot render the cursor movement a multiselect needs.
+  static const ciVariables = <String>[
+    'CI',
+    'CONTINUOUS_INTEGRATION',
+    'BUILD_NUMBER',
+    'GITHUB_ACTIONS',
+    'GITLAB_CI',
+    'TF_BUILD',
+    'TEAMCITY_VERSION',
+  ];
+
+  late final bool isCi = _detectCi();
+
+  bool _detectCi() {
+    for (final name in ciVariables) {
+      final value = environment[name];
+      // Present-but-empty is how a shell spells "unset" often enough to
+      // matter, and `CI=false` is set deliberately by people opting out.
+      if (value == null || value.isEmpty) continue;
+      if (value.toLowerCase() == 'false' || value == '0') continue;
+      return true;
+    }
+    return environment['TERM'] == 'dumb';
+  }
+
   BoostContext copyWith({Directory? workingDirectory}) => BoostContext(
     fileSystem: fileSystem,
     processRunner: processRunner,
