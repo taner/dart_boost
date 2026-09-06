@@ -5,7 +5,25 @@ on:
     tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
+  # The asset guard is what stands between a tag and a release that composes
+  # nothing: `dart pub publish` strips dot-prefixed paths, so a stray
+  # `.gitignore` or `.pubignore` entry silently empties the guidelines/ tree in
+  # the archive while every local run still passes. CI runs this on every
+  # change -- but nothing forces a tag to point at a commit CI was green on,
+  # and the release is unrecallable once it lands. Gate on it here too.
+  assets:
+    name: Publishable assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart run tool/verify_assets.dart
+
   publish:
+    needs: assets
     permissions:
       # Required for pub.dev's OIDC-based automated publishing.
       id-token: write
