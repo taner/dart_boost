@@ -12,9 +12,16 @@ compile here.
   use `NotifierProvider` and `AsyncNotifierProvider` instead.
 - There is one `Ref`. The per-provider `FooRef` subtypes and the
   `AutoDisposeRef` / `FutureProviderRef` family are gone, so a generated
-  provider's callback takes a plain `Ref`.
+  provider's callback takes a plain `Ref`. There is likewise no
+  `AutoDisposeNotifier`: `Notifier` and `AsyncNotifier` cover both lifetimes
+  and the provider's `.autoDispose` modifier decides.
+- **A notifier is recreated on every provider rebuild.** Anything you stashed
+  in a field rather than in `state` is gone after a dependency changes. This is
+  what makes `Ref.mounted` reliable, and it is a behaviour change from
+  Riverpod 2, where the instance was reused.
 - `Ref.mounted` exists, mirroring `BuildContext.mounted`. Check it after an
-  `await` before touching `state`.
+  `await` before touching `state`. Every other `Ref` and notifier member throws
+  once the provider is disposed -- in Riverpod 2 several of them no-oped.
 
 ```dart
 @riverpod
@@ -28,6 +35,10 @@ class Counter extends _$Counter {
 
 ## Failures and lifecycle
 
+- `AsyncValue.value` returns `null` in the error state instead of throwing, and
+  `AsyncValue.valueOrNull` has been removed -- `.value` is the safe read now.
+  Use `requireValue` where you want the throw, including when combining async
+  providers synchronously inside another provider's body.
 - Failing providers retry automatically with exponential backoff. That is on by
   default, so a provider stuck in `AsyncError` may re-enter `AsyncLoading` on
   its own. Turn it off per provider with `retry: (count, error) => null`, or
@@ -37,9 +48,13 @@ class Counter extends _$Counter {
   the original error, so match on those rather than on `try`/`catch` around
   `ref.read`.
 - Listeners inside widgets that are not visible are paused (Riverpod follows
-  `TickerMode`). Do not rely on a provider continuing to tick while its widget
-  is off-screen -- put anything that must keep running behind an explicit
-  `ref.keepAlive()` or a service the provider reads.
+  `TickerMode`), and a provider counts as paused once *all* of its listeners
+  are -- including a provider watched only by another paused provider. Do not
+  rely on a provider continuing to tick off-screen; put anything that must keep
+  running behind an explicit `ref.keepAlive()` or a service the provider reads.
+- `ProviderObserver` is a `base` class and every callback takes a
+  `ProviderObserverContext` rather than loose positional arguments. A Riverpod 2
+  observer is a rewrite, not a recompile.
 
 <!--boost:if usesRiverpodGenerator-->
 ## Code generation
