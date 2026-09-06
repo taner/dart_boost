@@ -98,6 +98,27 @@ void main() {
       },
     );
 
+    test('an SDK minor picks its own fragment and no other', () {
+      // Two SDK-keyed fragments now ship, and they contradict each other on
+      // purpose (what 3.47 added is what 3.44 lacks). Composing both, or
+      // composing the wrong one, is worse than composing neither.
+      fragment('flutter/core', '# Flutter\nany');
+      fragment('flutter/3.44/core', '# Flutter 3.44\nolder');
+      fragment('flutter/3.47/core', '# Flutter 3.47\nnewer');
+
+      final project =
+          FakeProject(fs, at('app'))
+            ..pubspec()
+            ..lock({})
+            ..dartToolVersion('3.44.9');
+
+      final result = compose(resolve(project));
+
+      expect(result.keys, contains('flutter/v3.44'));
+      expect(result.keys, isNot(contains('flutter/v3.47')));
+      expect(result.content, isNot(contains('newer')));
+    });
+
     test('picks up every other .md under the matched version directory', () {
       fragment('riverpod/3/core', '# Riverpod 3');
       fragment('riverpod/3/testing', '# Riverpod 3 testing');
