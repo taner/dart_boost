@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "dart": {
+      "command": "/opt/old-sdk/bin/dart",
+      "args": ["mcp-server", "--verbose"],
+      "env": {"LEGACY": "1"}
+    },
+    "filesystem": {
+      "command": "npx"
+    }
+  }
+}

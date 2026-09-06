@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "dart": {
+      "command": "dart",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  },
+  "editor.tabSize": 2,
+  "files.exclude": {
+    "**/.dart_tool": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  // Servers this project talks to.
+  "mcpServers": {
+    /* Kept in sync by hand. Do not reorder. */
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    },
+    "dart": {
+      "command": "dart",
+      "args": [
+        "mcp-server"
+      ]
+    }
+  }
+}

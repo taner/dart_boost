@@ -1,0 +1,9 @@
+[mcp_servers.dart]
+command = "/opt/old-sdk/bin/dart"
+args = ["mcp-server", "--verbose"]
+
+[mcp_servers.dart.env]
+LEGACY = "1"
+
+[mcp_servers.context7]
+command = "npx"

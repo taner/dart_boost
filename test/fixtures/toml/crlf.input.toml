@@ -1,0 +1,5 @@
+model = "o3"
+approval_policy = "on-request"
+
+[shell_environment_policy]
+inherit = "all"

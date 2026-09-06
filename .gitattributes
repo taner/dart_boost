@@ -1,0 +1,4 @@
+# Splicer goldens encode their line endings deliberately -- one fixture pair
+# exists specifically to prove CRLF survives a splice. Git must not normalize
+# them, or the Windows leg of the CI matrix fails on a checkout artefact.
+test/fixtures/** -text

@@ -1,0 +1,39 @@
+name: dart_boost
+description: >-
+  Version-aware AI coding guidelines and one-command multi-agent wiring for
+  Dart and Flutter projects. Composes project-tailored guidance from your
+  resolved dependency versions and configures the official `dart mcp-server`
+  into every AI agent you use.
+version: 0.1.0
+repository: https://github.com/taner/dart_boost
+
+environment:
+  # Floor set by cli_util >=0.5.1, the first release with `cli_components`.
+  # Everything else in the dependency set resolves below this.
+  sdk: ^3.7.0
+
+executables:
+  dart_boost:
+
+# Ranges are deliberately wide where the API we use is identical across the
+# majors, so `dart run dart_boost@ install` keeps working on older SDKs.
+# package_config 3.x needs SDK ^3.11 and toml 0.18 needs ^3.8 -- pinning those
+# as floors would lock out exactly the users most in need of version-aware
+# guidelines, and neither changes an API this package touches.
+dependencies:
+  args: ^2.4.0
+  cli_util: '>=0.5.1 <0.7.0' # cli_components (multiselect) + windows_compatibility
+  file: ^7.0.0 # FileSystem abstraction; MemoryFileSystem in unit tests
+  glob: ^2.1.2
+  io: ^1.0.4
+  package_config: '>=2.1.0 <4.0.0'
+  path: ^1.9.0
+  pub_semver: ^2.1.4
+  pubspec_parse: '>=1.3.0 <2.0.0' # typed pubspec.yaml; no lockfile model exists
+  toml: '>=0.16.0 <0.19.0' # validation only, never emission
+  yaml: ^3.1.2
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.31.0 # first release whose SDK floor matches ours
+  test_descriptor: ^2.0.0

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "dart": {
+      "command": "dart",
+      "args": [
+        "mcp-server"
+      ]
+    },
+    "filesystem": {
+      "command": "npx"
+    }
+  }
+}

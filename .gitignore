@@ -1,0 +1,17 @@
+# Dart / pub
+.dart_tool/
+.packages
+build/
+pubspec.lock
+doc/api/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# NOTE: never add `guidelines` (or any pattern matching it) to this file.
+# `dart pub publish` honours .gitignore, and the guidelines/ tree is the
+# package's payload -- excluding it produces a release that composes nothing.
+# tool/verify_assets.dart guards this in CI.
