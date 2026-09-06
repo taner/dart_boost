@@ -467,7 +467,7 @@ void main() {
       expect(output.join('\n'), contains('would run `dart run skills get`'));
     });
 
-    test('declining is remembered, so the next run does not re-ask', () async {
+    test('a declined offer runs nothing and is recorded as such', () async {
       await withSkillsDependency();
       processes.responses['dart run skills get'] = const ProcessOutcome(
         0,
@@ -485,6 +485,9 @@ void main() {
 
       expect(dialogs.questions.last, contains('dart run skills get'));
       expect(processes.invocations, isNot(contains('dart run skills get')));
+      // `delegateSkills` records consent, not a decision: false means "has not
+      // agreed", so the next interactive install asks again rather than
+      // treating one "no" as permanent.
       expect(state()['delegateSkills'], isFalse);
     });
   });
