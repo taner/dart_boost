@@ -22,8 +22,26 @@ jobs:
       - run: dart pub get
       - run: dart run tool/verify_assets.dart
 
+  # Same reasoning one step further out. `ci.yaml` runs on pushes to main and
+  # on pull requests, never on a tag -- so nothing checks that the commit being
+  # released is the commit CI was green on. This is not the full
+  # {os} x {sdk} matrix, which ci.yaml owns; it is a single green run against
+  # the exact tree about to be published.
+  verify:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      - run: dart test --reporter=expanded
+
   publish:
-    needs: assets
+    needs: [assets, verify]
     permissions:
       # Required for pub.dev's OIDC-based automated publishing.
       id-token: write
