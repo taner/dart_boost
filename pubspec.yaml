@@ -34,6 +34,7 @@ executables:
 dependencies:
   args: ^2.4.0
   cli_util: '>=0.5.1 <0.7.0' # cli_components (multiselect) + windows_compatibility
+  dart_mcp: ^0.5.2 # labs.dart.dev; the only file that touches it is lib/src/mcp/rules_server.dart
   file: ^7.0.0 # FileSystem abstraction; MemoryFileSystem in unit tests
   glob: ^2.1.2
   io: ^1.0.4
