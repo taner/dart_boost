@@ -43,6 +43,10 @@ void main() {
     test('slugs are lowercase and hyphenated', () {
       expect(filenameCandidates('lib/DataSources/**').first, 'datasources');
     });
+
+    test('falls back to general when all slugs are empty', () {
+      expect(filenameCandidates('___/**'), <String>['general']);
+    });
   });
 
   group('normalizeGlob', () {
@@ -74,6 +78,38 @@ void main() {
 
     test('rejects an empty glob', () {
       expect(normalizeGlob('   ', projectRoot: '/app'), isNull);
+    });
+
+    test('accepts absolute paths under the project root', () {
+      expect(normalizeGlob('/app/lib/x', projectRoot: '/app'), 'lib/x');
+    });
+
+    test('rejects Windows drive-absolute paths', () {
+      expect(
+        normalizeGlob(r'C:\Users\x\lib\file', projectRoot: '/app'),
+        isNull,
+      );
+    });
+
+    test('rejects UNC paths', () {
+      expect(
+        normalizeGlob(r'\\server\share\file', projectRoot: '/app'),
+        isNull,
+      );
+    });
+
+    test('normalizes .. in paths', () {
+      expect(
+        normalizeGlob('lib/models/../services/**', projectRoot: '/app'),
+        'lib/services/**',
+      );
+    });
+
+    test('normalizes doubled slashes', () {
+      expect(
+        normalizeGlob('lib//models/**', projectRoot: '/app'),
+        'lib/models/**',
+      );
     });
   });
 }

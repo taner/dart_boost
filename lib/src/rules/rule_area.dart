@@ -23,10 +23,14 @@ List<String> filenameCandidates(String glob) {
   final segments = meaningfulSegments(glob);
   if (segments.isEmpty) return <String>['general'];
 
-  return <String>[
+  final candidates = <String>[
     for (var take = 1; take <= segments.length; take++)
       _slug(segments.sublist(segments.length - take)),
   ];
+
+  // Filter out empty slugs and fall back to general if all were empty.
+  final nonEmpty = candidates.where((s) => s.isNotEmpty).toList();
+  return nonEmpty.isNotEmpty ? nonEmpty : <String>['general'];
 }
 
 String _slug(List<String> segments) => segments
@@ -43,17 +47,27 @@ String? normalizeGlob(String glob, {required String projectRoot}) {
   var value = glob.trim().replaceAll(r'\', '/');
   if (value.isEmpty) return null;
 
+  // Strip root prefix if present.
   final root = '${projectRoot.replaceAll(r'\', '/')}/';
-  if (value.startsWith(root)) value = value.substring(root.length);
+  if (value.startsWith(root)) {
+    value = value.substring(root.length);
+  } else {
+    // Not under root prefix. Check for absolute paths that might be problematic.
+    // Drive letters and UNC paths must be under the root or they're rejected.
+    if (RegExp(r'^[a-zA-Z]:').hasMatch(value) || value.startsWith('//')) {
+      return null;
+    }
+    // Strip leading slashes for relative interpretation.
+    value = value.replaceAll(RegExp('^/+'), '');
+  }
 
-  value = value.replaceAll(RegExp('^/+'), '');
   if (value.isEmpty) return null;
 
-  // Resolve `..` against a virtual root; anything that climbs out is refused.
-  final wildcard = value.contains('*');
-  final probe = wildcard ? value.replaceAll(RegExp(r'[*?]+'), 'x') : value;
-  final resolved = p.posix.normalize(probe);
-  if (resolved.startsWith('..') || p.posix.isAbsolute(resolved)) return null;
+  // Normalize the path to resolve .. and //.
+  final normalized = p.posix.normalize(value);
 
-  return value;
+  // Reject if it tries to escape the root.
+  if (normalized.startsWith('..')) return null;
+
+  return normalized;
 }
