@@ -38,9 +38,16 @@ class _RulesIndexCommand extends BoostCommand {
     // command is to let someone fix things up by hand, and a hard failure
     // here would block them from doing that for every *other* file too.
     final changed = repository.writeIndex(onWarning: logger.warn);
+
+    // `writeIndex` returning `true` under `--dry-run` means "would change",
+    // per `AtomicWriter.write` -- it never touches disk in that mode. Report
+    // that honestly instead of claiming the write already happened, the same
+    // way `install_command.dart` does for its own writes.
+    if (context.dryRun) logger.info('Dry run: nothing was written.');
+    final verb = context.dryRun ? 'Would rewrite' : 'Rewrote';
     logger.info(
       changed
-          ? 'Rewrote ${context.relative(repository.indexPath)}.'
+          ? '$verb ${context.relative(repository.indexPath)}.'
           : 'Index already up to date.',
     );
     return 0;

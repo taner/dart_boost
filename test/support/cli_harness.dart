@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
 import 'package:dart_boost/src/cli/dialog_support.dart';
 import 'package:dart_boost/src/cli/runner.dart';
 import 'package:dart_boost/src/util/logger.dart';
@@ -51,8 +52,16 @@ Future<CliResult> runCli(
     environment: const <String, String>{},
     isWindows: false,
   );
-  final exitCode = await runner.run(args) ?? 0;
-  return CliResult(exitCode, output.join('\n'));
+  // `CommandRunner.run` throws `UsageException` for a missing subcommand or
+  // a bad flag rather than returning an exit code -- `bin/dart_boost.dart`
+  // catches it and maps it to 64 (`EX_USAGE`), so mirror that here. Anything
+  // else is a genuine bug and should still blow up the test.
+  try {
+    final exitCode = await runner.run(args) ?? 0;
+    return CliResult(exitCode, output.join('\n'));
+  } on UsageException catch (error) {
+    return CliResult(64, <String>[...output, error.toString()].join('\n'));
+  }
 }
 
 /// Reads a file at [path] (an absolute path, e.g. from `d.path(...)`).

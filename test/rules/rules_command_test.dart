@@ -58,4 +58,41 @@ void main() {
     expect(result.exitCode, 0);
     expect(result.output, contains('broken.md'));
   });
+
+  test('rules index --dry-run reports without writing', () async {
+    await d.dir('app', <d.Descriptor>[
+      d.file('pubspec.yaml', 'name: app\nenvironment:\n  sdk: ^3.7.0\n'),
+      d.dir('.ai', <d.Descriptor>[
+        d.dir('rules', <d.Descriptor>[
+          d.file(
+            'models.md',
+            '---\npaths:\n  - lib/models/**\n---\n\n# Models\n\n## A\n\na\n',
+          ),
+        ]),
+      ]),
+    ]).create();
+
+    final result = await runCli(<String>[
+      '--dry-run',
+      'rules',
+      'index',
+      '-C',
+      d.path('app'),
+    ]);
+
+    expect(result.exitCode, 0);
+    expect(result.output, isNot(contains('Rewrote')));
+    await d.dir('app', <d.Descriptor>[
+      d.dir('.ai', <d.Descriptor>[
+        d.dir('rules', <d.Descriptor>[d.nothing('index.md')]),
+      ]),
+    ]).validate();
+  });
+
+  test('a missing subcommand is a usage error, not a crash', () async {
+    final result = await runCli(<String>['rules']);
+
+    expect(result.exitCode, 64);
+    expect(result.output, contains('Missing subcommand'));
+  });
 }
