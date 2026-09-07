@@ -9,6 +9,7 @@ import '../version.dart';
 import 'commands/compose_command.dart';
 import 'commands/doctor_command.dart';
 import 'commands/install_command.dart';
+import 'commands/rules_command.dart';
 import 'commands/update_command.dart';
 import 'context.dart';
 import 'dialog_support.dart';
@@ -68,6 +69,7 @@ class DartBoostRunner extends CommandRunner<int> {
     addCommand(ComposeCommand());
     addCommand(InstallCommand());
     addCommand(UpdateCommand());
+    addCommand(RulesCommand());
   }
 
   static const _description =
