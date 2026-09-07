@@ -27,7 +27,7 @@ void main() {
     final content = await readFile(d.path('app/.ai/infer-conventions.md'));
     expect(content, contains('record_rule'));
     expect(content, contains('analysis_options.yaml'));
-    expect(content, contains('state management'));
+    expect(content, contains('State management'));
   });
 
   test('the procedure is not written when rules are disabled', () async {
