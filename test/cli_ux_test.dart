@@ -497,8 +497,23 @@ void main() {
 
       await run(['-C', appDir(), 'install'], dialogs: dialogs);
 
+      // Three questions, in order: plan confirmation, rules wiring, skills.
+      // Asserting the count (not just `.last`) is what catches a rules path
+      // that silently stops asking -- with only two questions, `[1]=false`
+      // would answer the *skills* question instead and every other
+      // assertion here would still pass.
+      expect(dialogs.questions, hasLength(3));
+      expect(dialogs.questions[0], 'Proceed?');
+      expect(
+        dialogs.questions[1],
+        allOf(contains('dart_boost'), contains('dev dependency')),
+      );
       expect(dialogs.questions.last, contains('dart run skills get'));
       expect(processes.invocations, isNot(contains('dart run skills get')));
+      expect(
+        processes.invocations,
+        isNot(contains('dart pub add dev:dart_boost')),
+      );
       // `delegateSkills` records consent, not a decision: false means "has not
       // agreed", so the next interactive install asks again rather than
       // treating one "no" as permanent.
