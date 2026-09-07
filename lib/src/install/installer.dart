@@ -7,6 +7,7 @@ import '../cli/context.dart';
 import '../guidelines/composer.dart';
 import '../guidelines/facts.dart';
 import '../project/project.dart';
+import '../writers/atomic_writer.dart';
 import '../writers/guidelines_writer.dart';
 import '../writers/mcp_writer.dart';
 import 'rules_wiring.dart';
@@ -53,6 +54,24 @@ class GuidelineFileReport {
   final GuidelineWriteOutcome outcome;
 }
 
+enum ProcedureWriteOutcome {
+  written('written'),
+  unchanged('already up to date');
+
+  const ProcedureWriteOutcome(this.label);
+
+  final String label;
+}
+
+/// The `.ai/infer-conventions.md` write -- unlike a guideline file, it is
+/// project-wide rather than per-agent, so there is no `agents` list to carry.
+class ProcedureFileReport {
+  const ProcedureFileReport({required this.path, required this.outcome});
+
+  final String path;
+  final ProcedureWriteOutcome outcome;
+}
+
 class InstallReport {
   const InstallReport({
     required this.compose,
@@ -61,6 +80,7 @@ class InstallReport {
     required this.spec,
     this.mcpAvailable = true,
     this.rulesOutcome,
+    this.procedureWrite,
     this.warnings = const <String>[],
   });
 
@@ -68,6 +88,10 @@ class InstallReport {
   final List<GuidelineFileReport> guidelineWrites;
   final List<McpWriteReport> mcpWrites;
   final McpServerSpec spec;
+
+  /// The `.ai/infer-conventions.md` write. `null` when [InstallPlan.rules] was
+  /// off -- there was nothing to write.
+  final ProcedureFileReport? procedureWrite;
 
   /// Whether `dart mcp-server --version` answered.
   final bool mcpAvailable;
@@ -121,6 +145,14 @@ class Installer {
           GuidelineFileReport(path: path, agents: agents, outcome: outcome),
         );
       });
+    }
+
+    final procedureWrite = _writeProcedure(context, project, assets, plan);
+    if (procedureWrite == null && plan.rules) {
+      warnings.add(
+        'Bundled assets/infer-conventions.md not found; skipped writing '
+        '.ai/infer-conventions.md.',
+      );
     }
 
     final spec = McpCommandResolver.resolve(
@@ -187,9 +219,41 @@ class Installer {
       spec: spec,
       mcpAvailable: mcpAvailable,
       rulesOutcome: rulesOutcome,
+      procedureWrite: procedureWrite,
       warnings: warnings,
     );
   }
+}
+
+/// Writes the bootstrap procedure into the target project.
+///
+/// Gated on [InstallPlan.rules] alone -- unlike guidelines and MCP, this file
+/// is not agent-specific, so it does not belong under [InstallPlan.guidelines]
+/// or [InstallPlan.mcp] and is written (or left alone) exactly once per run.
+ProcedureFileReport? _writeProcedure(
+  BoostContext context,
+  Project project,
+  BundledAssets assets,
+  InstallPlan plan,
+) {
+  if (!plan.rules) return null;
+
+  final source = assets.asset('infer-conventions.md');
+  if (source == null) return null;
+
+  final path = p.join(project.root.path, '.ai', 'infer-conventions.md');
+  final changed = AtomicWriter(
+    context.fileSystem,
+    dryRun: context.dryRun,
+  ).write(path, source.readAsStringSync());
+
+  return ProcedureFileReport(
+    path: path,
+    outcome:
+        changed
+            ? ProcedureWriteOutcome.written
+            : ProcedureWriteOutcome.unchanged,
+  );
 }
 
 /// Groups agents by the guidelines file they share, keyed so that the file is

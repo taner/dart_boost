@@ -448,6 +448,15 @@ void _report(BoostCommand command, InstallReport report, InstallPlan plan) {
         ? logger.skipped(line)
         : logger.success(line);
   }
+  final procedureWrite = report.procedureWrite;
+  if (procedureWrite != null) {
+    final line =
+        '${context.relative(procedureWrite.path).padRight(28)} '
+        '${procedureWrite.outcome.label}';
+    procedureWrite.outcome == ProcedureWriteOutcome.unchanged
+        ? logger.skipped(line)
+        : logger.success(line);
+  }
 
   if (plan.mcp) {
     logger

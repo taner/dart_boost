@@ -1,11 +1,12 @@
-// Asserts that every file under `guidelines/` survives packaging.
+// Asserts that every file under `guidelines/` and `assets/` survives
+// packaging.
 //
 // This is the only defence against the trap that would otherwise sink the
 // first release: `dart pub publish` strips every dot-prefixed file and
 // directory, so a fragment tree named `.ai/` (Boost's name) works perfectly in
-// development and is *entirely absent* from the published archive. The tree is
-// therefore not dot-prefixed -- and a stray `.gitignore` or `.pubignore` entry
-// would reintroduce exactly the same failure silently.
+// development and is *entirely absent* from the published archive. Both trees
+// are therefore not dot-prefixed -- and a stray `.gitignore` or `.pubignore`
+// entry would reintroduce exactly the same failure silently.
 //
 // `dart pub publish --dry-run` prints the real file manifest, so this asks it.
 //
@@ -15,25 +16,33 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+const _trees = <String>['guidelines', 'assets'];
+
 Future<void> main() async {
   final packageRoot = _packageRoot();
-  final guidelines = Directory(p.join(packageRoot, 'guidelines'));
 
-  if (!guidelines.existsSync()) {
-    _fail('There is no guidelines/ directory at $packageRoot.');
+  final expected = <String>{};
+  for (final tree in _trees) {
+    final directory = Directory(p.join(packageRoot, tree));
+
+    if (!directory.existsSync()) {
+      _fail('There is no $tree/ directory at $packageRoot.');
+    }
+
+    final files =
+        directory
+            .listSync(recursive: true)
+            .whereType<File>()
+            .map(
+              (file) => p
+                  .relative(file.path, from: packageRoot)
+                  .replaceAll(r'\', '/'),
+            )
+            .toSet();
+
+    if (files.isEmpty) _fail('$tree/ is empty; nothing to verify.');
+    expected.addAll(files);
   }
-
-  final expected =
-      guidelines
-          .listSync(recursive: true)
-          .whereType<File>()
-          .map(
-            (file) =>
-                p.relative(file.path, from: packageRoot).replaceAll(r'\', '/'),
-          )
-          .toSet();
-
-  if (expected.isEmpty) _fail('guidelines/ is empty; nothing to verify.');
 
   final result = await Process.run(Platform.resolvedExecutable, <String>[
     'pub',
@@ -59,13 +68,16 @@ Future<void> main() async {
     _fail(
       'These files exist on disk but would NOT be published:\n'
       '${missing.map((f) => '  - $f').join('\n')}\n\n'
-      'Check .gitignore and .pubignore for an entry matching `guidelines`, and '
-      'check that no path component is dot-prefixed.',
+      'Check .gitignore and .pubignore for an entry matching '
+      '${_trees.join(' or ')}, and check that no path component is '
+      'dot-prefixed.',
     );
   }
 
+  final treeNames = _trees.map((tree) => '$tree/').join(' and ');
   stdout.writeln(
-    'All ${expected.length} files under guidelines/ appear in the publish manifest.',
+    'All ${expected.length} files under $treeNames appear in the publish '
+    'manifest.',
   );
 }
 

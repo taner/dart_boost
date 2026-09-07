@@ -105,6 +105,20 @@ class BundledAssets {
     return BundledAssets(fileSystem.directory(root), guidelines);
   }
 
+  /// A file under `<root>/assets/…` -- e.g. `infer-conventions.md` -- copied
+  /// verbatim into the target project, or `null` when it does not ship.
+  ///
+  /// `assets/` is a sibling of `guidelines/`, not a member of it, and not
+  /// dot-prefixed for the same reason `guidelines/` is not: `dart pub
+  /// publish` strips every dot-prefixed path, so a `.ai/` tree here would
+  /// work locally and be entirely absent from the release.
+  File? asset(String relativePath) {
+    final file = root.fileSystem.file(
+      p.join(root.path, 'assets', p.joinAll(relativePath.split('/'))),
+    );
+    return file.existsSync() ? file : null;
+  }
+
   /// The bundled fragment for [key] (`flutter/core`, `riverpod/3/core`), or
   /// `null` when no such fragment ships.
   File? fragment(String key) {
