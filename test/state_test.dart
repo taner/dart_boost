@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dart_boost/src/state/boost_state.dart';
+import 'package:dart_boost/src/state/machine_state.dart';
 import 'package:file/file.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -10,12 +11,14 @@ import 'support/fake_project.dart';
 void main() {
   late FileSystem fs;
   late BoostStateStore store;
+  late MachineStateStore machineStore;
 
   setUp(() {
     fs = memoryFs();
     final root = fs.directory(p.join(fs.currentDirectory.path, 'app'))
       ..createSync(recursive: true);
     store = BoostStateStore(fs, root);
+    machineStore = MachineStateStore(fs, root);
   });
 
   test('round-trips', () {
@@ -23,41 +26,32 @@ void main() {
       agents: ['claude_code', 'copilot', 'codex'],
       thirdPartyPackages: ['serverpod'],
       delegateSkills: true,
-      lastRun: const LastRun(
-        flutter: '3.47.2',
-        dart: '3.13.2',
-        boostVersion: '0.1.0',
-      ),
     );
 
     store.write(state);
-    final read = store.read()!;
+    final read = store.read()!.state;
 
     expect(read.agents, state.agents);
     expect(read.thirdPartyPackages, ['serverpod']);
     expect(read.delegateSkills, isTrue);
     expect(read.guidelines, isTrue);
     expect(read.mcp, isTrue);
-    expect(read.lastRun!.flutter, '3.47.2');
     expect(read.trusts('serverpod'), isTrue);
     expect(read.trusts('anything_else'), isFalse);
   });
 
   test('writes the documented shape', () {
-    store.write(
-      BoostState(
-        agents: ['claude_code'],
-        lastRun: const LastRun(flutter: '3.47.2'),
-      ),
-    );
+    store.write(BoostState(agents: ['claude_code']));
 
     final decoded =
         jsonDecode(store.file.readAsStringSync()) as Map<String, Object?>;
-    expect(decoded['version'], 1);
+    expect(decoded['version'], 2);
     expect(decoded['agents'], ['claude_code']);
     expect(decoded['features'], {'guidelines': true, 'mcp': true});
     expect(decoded['thirdPartyPackages'], isEmpty);
-    expect(decoded['lastRun'], {'flutter': '3.47.2'});
+    expect(decoded, isNot(contains('lastRun')));
+    expect(decoded, isNot(contains('dependencies')));
+    expect(decoded, isNot(contains('fragments')));
   });
 
   test('an absent state file is null, not an error', () {
@@ -77,13 +71,60 @@ void main() {
   );
 
   test('missing optional fields fall back to safe defaults', () {
-    store.file.writeAsStringSync('{"version": 1, "agents": ["cursor"]}');
-    final read = store.read()!;
+    store.file.writeAsStringSync('{"version": 2, "agents": ["cursor"]}');
+    final read = store.read()!.state;
 
     expect(read.agents, ['cursor']);
     expect(read.guidelines, isTrue);
     expect(read.mcp, isTrue);
     expect(read.delegateSkills, isFalse);
-    expect(read.lastRun, isNull);
+    expect(read.rules.enabled, isTrue);
+  });
+
+  group('MachineState', () {
+    test('round-trips through its own store, separate from choices', () {
+      machineStore.write(
+        const MachineState(
+          dependencies: {'go_router': '18.2.0'},
+          fragments: ['go_router/v18'],
+          lastRun: LastRun(
+            flutter: '3.47.2',
+            dart: '3.13.2',
+            boostVersion: '0.1.0',
+          ),
+        ),
+      );
+      final read = machineStore.read()!;
+
+      expect(read.dependencies, {'go_router': '18.2.0'});
+      expect(read.fragments, ['go_router/v18']);
+      expect(read.lastRun!.flutter, '3.47.2');
+      expect(machineStore.file.path, contains('.dart_tool'));
+      // Writing machine state must never touch the committed choices file.
+      expect(store.exists, isFalse);
+    });
+
+    test('an absent machine state file is null, not an error', () {
+      expect(machineStore.read(), isNull);
+      expect(machineStore.exists, isFalse);
+    });
+
+    test('a corrupt machine state file warns and is ignored', () {
+      machineStore.file.parent.createSync(recursive: true);
+      machineStore.file.writeAsStringSync('{ this is not json');
+      final warnings = <String>[];
+
+      expect(machineStore.read(onWarning: warnings.add), isNull);
+      expect(warnings, hasLength(1));
+    });
+
+    test('missing dependencies/fragments stay null, not empty', () {
+      machineStore.write(const MachineState());
+      final read = machineStore.read()!;
+
+      expect(read.dependencies, isNull);
+      expect(read.fragments, isNull);
+      expect(read.lastRun, isNull);
+    });
   });
 }

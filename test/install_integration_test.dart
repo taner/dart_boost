@@ -325,8 +325,14 @@ ${pathDependencies.entries.map((e) => '  ${e.key}:\n    dependency: "direct main
       final state = jsonDecode(read('dart_boost.json')) as Map<String, Object?>;
       expect(state['agents'], ['claude_code']);
       expect(state['features'], {'guidelines': true, 'mcp': true});
-      expect(state['lastRun'], containsPair('flutter', '3.47.2'));
-      expect(state['lastRun'], containsPair('dart', '3.13.2'));
+
+      // Observations live in the gitignored machine state file, not the
+      // committed choices.
+      final machineState =
+          jsonDecode(read('.dart_tool/dart_boost/state.json'))
+              as Map<String, Object?>;
+      expect(machineState['lastRun'], containsPair('flutter', '3.47.2'));
+      expect(machineState['lastRun'], containsPair('dart', '3.13.2'));
     });
 
     test('--dry-run touches nothing', () async {
@@ -412,7 +418,7 @@ ${pathDependencies.entries.map((e) => '  ${e.key}:\n    dependency: "direct main
       // The composed guidelines follow the new SDK minor.
       expect(read('CLAUDE.md'), isNot(contains('=== flutter/v3.47 rules ===')));
       expect(
-        jsonDecode(read('dart_boost.json')),
+        jsonDecode(read('.dart_tool/dart_boost/state.json')),
         containsPair('lastRun', containsPair('flutter', '3.44.9')),
       );
     });

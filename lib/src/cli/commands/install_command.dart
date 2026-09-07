@@ -6,6 +6,7 @@ import '../../install/installer.dart';
 import '../../install/skills_delegate.dart';
 import '../../project/project.dart';
 import '../../state/boost_state.dart';
+import '../../state/machine_state.dart';
 import '../../version.dart';
 import '../../writers/guidelines_writer.dart';
 import '../../writers/mcp_writer.dart';
@@ -94,7 +95,19 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
   }
 
   final store = context.stateStore(project.root);
-  final previous = store.read(onWarning: logger.warn);
+  final loaded = store.read(onWarning: logger.warn);
+  final previous = loaded?.state;
+
+  final machineStore = context.machineStateStore(project.root);
+  var machine = machineStore.read(onWarning: logger.warn);
+  final migrated = loaded?.migrated;
+  if (migrated != null) {
+    // A v1 file: its observations moved here from `dart_boost.json`. Persist
+    // them right away so this run's own comparisons -- and a crash before the
+    // final write -- do not silently drop what the last run recorded.
+    machine = migrated;
+    if (!context.dryRun) machineStore.write(migrated);
+  }
 
   if (isUpdate && previous == null) {
     logger.error(
@@ -106,8 +119,8 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
 
   var drift = DependencyDrift.unknown;
   if (isUpdate) {
-    _reportSdkDrift(command, project, previous!);
-    drift = diffDependencies(project, previous.dependencies);
+    _reportSdkDrift(command, project, machine?.lastRun);
+    drift = diffDependencies(project, machine?.dependencies);
     _reportDependencyDrift(command, drift);
   }
 
@@ -146,7 +159,7 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
     context,
   ).run(project: project, assets: assets, plan: plan);
 
-  drift = withFragmentDrift(drift, previous?.fragments, report.compose.keys);
+  drift = withFragmentDrift(drift, machine?.fragments, report.compose.keys);
   _report(command, report, plan);
   _reportFragmentDrift(command, drift);
 
@@ -168,6 +181,11 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
           skills,
           previous: previous?.delegateSkills ?? false,
         ),
+        rules: previous?.rules ?? const RulesSettings(),
+      ),
+    );
+    machineStore.write(
+      MachineState(
         dependencies: snapshotDependencies(project),
         fragments: report.compose.keys,
         lastRun: LastRun(
@@ -319,14 +337,9 @@ Future<List<Agent>?> _selectAgents(
   return selection.map((index) => AgentRegistry.all[index]).toList();
 }
 
-void _reportSdkDrift(
-  BoostCommand command,
-  Project project,
-  BoostState previous,
-) {
-  final logger = command.logger;
-  final last = previous.lastRun;
+void _reportSdkDrift(BoostCommand command, Project project, LastRun? last) {
   if (last == null) return;
+  final logger = command.logger;
 
   final flutter = project.sdk.flutter?.toString();
   if (last.flutter != null && flutter != null && last.flutter != flutter) {

@@ -3,8 +3,16 @@ import 'dart:convert';
 import 'package:file/file.dart';
 import 'package:path/path.dart' as p;
 
+import 'machine_state.dart';
+
 /// `dart_boost.json` at the project root -- what `install` chose, so `update`
 /// can repeat it without re-asking.
+///
+/// Committed to git: these are decisions a human made (which agents, which
+/// packages to trust), not facts about the machine that ran `install`. Per-run
+/// observations live in [MachineState] instead, so that a teammate on a
+/// different Flutter version does not rewrite this file just by running
+/// `update`.
 class BoostState {
   BoostState({
     this.schemaVersion = currentSchemaVersion,
@@ -13,13 +21,11 @@ class BoostState {
     this.mcp = true,
     List<String>? thirdPartyPackages,
     this.delegateSkills = false,
-    this.dependencies,
-    this.fragments,
-    this.lastRun,
+    this.rules = const RulesSettings(),
   }) : agents = agents ?? <String>[],
        thirdPartyPackages = thirdPartyPackages ?? <String>[];
 
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion = 2;
   static const fileName = 'dart_boost.json';
 
   final int schemaVersion;
@@ -37,29 +43,7 @@ class BoostState {
 
   final bool delegateSkills;
 
-  /// The direct dependencies the last run resolved, name -> version.
-  ///
-  /// This is what makes `update` able to say "you added go_router since the
-  /// last run" rather than silently re-composing. Direct only: recording the
-  /// full transitive closure would put a hundred lines of churn into a file
-  /// the user commits, and a transitive bump the user never asked for is not
-  /// news. `-` stands in for a dependency with no resolved version (an SDK,
-  /// path or git dep), so its presence still round-trips.
-  ///
-  /// `null` -- not the empty map -- means the last run predates this field.
-  /// The two must stay distinguishable: an empty map is "a project with no
-  /// dependencies", and treating a state file written by an older dart_boost
-  /// as that would announce every existing dependency as newly added.
-  final Map<String, String>? dependencies;
-
-  /// The fragment keys the last run composed, so `update` can report the
-  /// guidance that actually appeared or disappeared -- the user-visible
-  /// consequence of a dependency change, which a version diff alone does not
-  /// show (most packages have no fragment, and some share one). `null` has
-  /// the same "not recorded" meaning as on [dependencies].
-  final List<String>? fragments;
-
-  final LastRun? lastRun;
+  final RulesSettings rules;
 
   bool trusts(String packageName) => thirdPartyPackages.contains(packageName);
 
@@ -69,9 +53,7 @@ class BoostState {
     bool? mcp,
     List<String>? thirdPartyPackages,
     bool? delegateSkills,
-    Map<String, String>? dependencies,
-    List<String>? fragments,
-    LastRun? lastRun,
+    RulesSettings? rules,
   }) => BoostState(
     schemaVersion: schemaVersion,
     agents: agents ?? this.agents,
@@ -79,9 +61,7 @@ class BoostState {
     mcp: mcp ?? this.mcp,
     thirdPartyPackages: thirdPartyPackages ?? this.thirdPartyPackages,
     delegateSkills: delegateSkills ?? this.delegateSkills,
-    dependencies: dependencies ?? this.dependencies,
-    fragments: fragments ?? this.fragments,
-    lastRun: lastRun ?? this.lastRun,
+    rules: rules ?? this.rules,
   );
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -90,67 +70,43 @@ class BoostState {
     'features': <String, Object?>{'guidelines': guidelines, 'mcp': mcp},
     'thirdPartyPackages': thirdPartyPackages,
     'delegateSkills': delegateSkills,
-    if (dependencies != null) 'dependencies': dependencies,
-    if (fragments != null) 'fragments': fragments,
-    if (lastRun != null) 'lastRun': lastRun!.toJson(),
+    'rules': rules.toJson(),
   };
 
+  /// Forces [schemaVersion] to [currentSchemaVersion] regardless of what was
+  /// on disk, so a plain read-then-write upgrades a v1 file without a
+  /// separate migration step for the choices half.
   static BoostState fromJson(Map<String, Object?> json) {
     final features = json['features'];
     final featureMap = features is Map ? features : const <Object?, Object?>{};
     return BoostState(
-      schemaVersion: (json['version'] as num?)?.toInt() ?? currentSchemaVersion,
+      schemaVersion: currentSchemaVersion,
       agents: _strings(json['agents']),
       guidelines: featureMap['guidelines'] as bool? ?? true,
       mcp: featureMap['mcp'] as bool? ?? true,
       thirdPartyPackages: _strings(json['thirdPartyPackages']),
       delegateSkills: json['delegateSkills'] as bool? ?? false,
-      dependencies:
-          json.containsKey('dependencies')
-              ? _stringMap(json['dependencies'])
-              : null,
-      fragments:
-          json.containsKey('fragments') ? _strings(json['fragments']) : null,
-      lastRun:
-          json['lastRun'] is Map<String, Object?>
-              ? LastRun.fromJson(json['lastRun']! as Map<String, Object?>)
-              : null,
+      rules: RulesSettings.fromJson(json['rules']),
     );
   }
 
   static List<String> _strings(Object? value) =>
       value is List ? value.whereType<String>().toList() : <String>[];
-
-  static Map<String, String> _stringMap(Object? value) {
-    if (value is! Map) return <String, String>{};
-    return <String, String>{
-      for (final entry in value.entries)
-        if (entry.key is String && entry.value is String)
-          entry.key as String: entry.value as String,
-    };
-  }
 }
 
-/// Lets `update` say "Flutter 3.44 -> 3.47, re-composing" and spot a stale
-/// `pub get` by comparing against `.dart_tool/version`.
-class LastRun {
-  const LastRun({this.flutter, this.dart, this.boostVersion});
+/// Whether generated project rule files are kept in sync. Consumed by a later
+/// task; defaults to on so opting out is a deliberate choice.
+class RulesSettings {
+  const RulesSettings({this.enabled = true});
 
-  final String? flutter;
-  final String? dart;
-  final String? boostVersion;
+  final bool enabled;
 
-  Map<String, Object?> toJson() => <String, Object?>{
-    if (flutter != null) 'flutter': flutter,
-    if (dart != null) 'dart': dart,
-    if (boostVersion != null) 'boostVersion': boostVersion,
-  };
+  Map<String, Object?> toJson() => <String, Object?>{'enabled': enabled};
 
-  static LastRun fromJson(Map<String, Object?> json) => LastRun(
-    flutter: json['flutter'] as String?,
-    dart: json['dart'] as String?,
-    boostVersion: json['boostVersion'] as String?,
-  );
+  static RulesSettings fromJson(Object? value) {
+    if (value is! Map) return const RulesSettings();
+    return RulesSettings(enabled: value['enabled'] as bool? ?? true);
+  }
 }
 
 class BoostStateStore {
@@ -166,12 +122,25 @@ class BoostStateStore {
 
   /// Returns `null` when there is no state file; throws nothing when the file
   /// is corrupt -- a broken state file must not block a re-install.
-  BoostState? read({void Function(String)? onWarning}) {
+  ///
+  /// `migrated` is non-null only when the file on disk predates the split
+  /// (schema version 1), and carries the observations that used to live
+  /// alongside the choices so the caller can write them into their new home
+  /// ([MachineState]) instead of losing them.
+  ({BoostState state, MachineState? migrated})? read({
+    void Function(String)? onWarning,
+  }) {
     if (!file.existsSync()) return null;
     try {
       final decoded = jsonDecode(file.readAsStringSync());
       if (decoded is! Map<String, Object?>) return null;
-      return BoostState.fromJson(decoded);
+
+      final version = (decoded['version'] as num?)?.toInt() ?? 1;
+      final state = BoostState.fromJson(decoded);
+
+      if (version >= 2) return (state: state, migrated: null);
+
+      return (state: state, migrated: MachineState.fromJson(decoded));
     } on Object catch (error) {
       onWarning?.call('Ignoring unreadable ${file.path}: $error');
       return null;

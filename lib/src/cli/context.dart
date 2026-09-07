@@ -8,6 +8,7 @@ import '../agents/agent_detector.dart';
 import '../assets/bundled_assets.dart';
 import '../project/project.dart';
 import '../state/boost_state.dart';
+import '../state/machine_state.dart';
 import '../util/logger.dart';
 import '../util/process_runner.dart';
 import 'dialog_support.dart';
@@ -142,6 +143,9 @@ class BoostContext {
 
   BoostStateStore stateStore(Directory root) =>
       BoostStateStore(fileSystem, root);
+
+  MachineStateStore machineStateStore(Directory root) =>
+      MachineStateStore(fileSystem, root);
 
   /// Presents a path relative to the working directory when that is shorter.
   String relative(String path) {

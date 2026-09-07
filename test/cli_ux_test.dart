@@ -106,6 +106,12 @@ void main() {
       jsonDecode(appFile('dart_boost.json').readAsStringSync())
           as Map<String, Object?>;
 
+  /// The per-machine observations, split out of `dart_boost.json` into
+  /// `.dart_tool/dart_boost/state.json` -- gitignored, unlike [state].
+  Map<String, Object?> machineState() =>
+      jsonDecode(appFile('.dart_tool/dart_boost/state.json').readAsStringSync())
+          as Map<String, Object?>;
+
   group('interactive selection', () {
     test('writes only what the multiselect returned', () async {
       await project();
@@ -245,11 +251,11 @@ void main() {
       // `flutter` is a direct dependency with no resolvable version -- adding
       // or dropping it changes the composed guidance, so it is recorded as
       // `-` rather than omitted.
-      expect(state()['dependencies'], <String, String>{
+      expect(machineState()['dependencies'], <String, String>{
         'flutter': '-',
         'riverpod': '3.0.1',
       });
-      expect(state()['fragments'], contains('riverpod/v3'));
+      expect(machineState()['fragments'], contains('riverpod/v3'));
     });
 
     test(
@@ -275,7 +281,7 @@ void main() {
           appFile('CLAUDE.md').readAsStringSync(),
           contains('=== go_router/v18 rules ==='),
         );
-        expect(state()['fragments'], contains('go_router/v18'));
+        expect(machineState()['fragments'], contains('go_router/v18'));
       },
     );
 
@@ -326,19 +332,24 @@ void main() {
       expect(report, contains('riverpod/v2'));
     });
 
-    test('a state file with no recorded dependencies claims no drift', () async {
-      await installed();
-      // What a `dart_boost.json` from before this field looks like. Every
-      // dependency is "new" relative to an empty baseline, and saying so would
-      // be the loudest possible way to be wrong.
-      final legacy = state()..remove('dependencies');
-      appFile('dart_boost.json').writeAsStringSync(jsonEncode(legacy));
+    test(
+      'a state file with no recorded dependencies claims no drift',
+      () async {
+        await installed();
+        // What a machine state file from before this field existed looks like.
+        // Every dependency is "new" relative to an empty baseline, and saying
+        // so would be the loudest possible way to be wrong.
+        final legacy = machineState()..remove('dependencies');
+        appFile(
+          '.dart_tool/dart_boost/state.json',
+        ).writeAsStringSync(jsonEncode(legacy));
 
-      await run(['-C', appDir(), 'update', '--yes']);
+        await run(['-C', appDir(), 'update', '--yes']);
 
-      expect(output.join('\n'), isNot(contains('+ riverpod')));
-      expect(state()['dependencies'], isNotEmpty);
-    });
+        expect(output.join('\n'), isNot(contains('+ riverpod')));
+        expect(machineState()['dependencies'], isNotEmpty);
+      },
+    );
 
     test('update repeats the saved answers without prompting', () async {
       await installed();
