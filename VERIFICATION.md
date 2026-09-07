@@ -28,6 +28,15 @@ Dart 3.13.2 / Flutter 3.47.2 (FVM), macOS arm64. Sandbox: `flutter create` +
   fixtures `-text` (`git add --renormalize` is a no-op). Tests are hermetic.
 - `dart format` clean, `dart analyze --fatal-infos` clean, **293 tests green**.
 
+> **Note (0.2.0):** this Phase 1–3 pass predates project rules — the
+> `record_rule` MCP server, `.ai/rules/`, `infer-conventions` and the
+> `dart_boost.json`/`.dart_tool/dart_boost/state.json` split added after it.
+> By the start of that work the suite had grown to 409 tests; the count above
+> (293) was stale before this file was corrected and describes only what this
+> page verifies. As of the project-rules work landing (Task 10), the suite is
+> **485 tests green**, `dart format --set-exit-if-changed .` and
+> `dart analyze --fatal-infos` clean, and `tool/verify_assets.dart` passes.
+
 ## Fixed (5 commits on `agent/worker-t005b-verification`)
 
 1. **`package_config.json` `rootUri` resolved one directory too high.**

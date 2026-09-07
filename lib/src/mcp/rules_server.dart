@@ -5,6 +5,7 @@ import 'package:dart_mcp/server.dart';
 import 'package:dart_mcp/stdio.dart';
 
 import '../rules/rule_repository.dart';
+import '../version.dart';
 
 /// The description is prompt engineering, not documentation: it is what the
 /// agent reads when deciding whether this is the moment to record something.
@@ -84,7 +85,10 @@ base class DartBoostMcpServer extends MCPServer with ToolsSupport {
   }) : _repository = repository,
        _rulesEnabled = rulesEnabled,
        super.fromStreamChannel(
-         implementation: Implementation(name: 'dart_boost', version: '0.1.0'),
+         implementation: Implementation(
+           name: 'dart_boost',
+           version: packageVersion,
+         ),
          instructions:
              'Exposes record_rule so an agent can save a durable project '
              'rule mid-session instead of re-deriving it next time.',

@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.2.0
+
+Project rules: dart_boost's own MCP server, so agents record durable
+project-specific decisions instead of re-deriving them every session.
+
+- **`record_rule` MCP server.** A second server, run via
+  `dart run dart_boost:mcp`, wired into every selected agent's config unless
+  `--no-rules`. Its one tool, `record_rule`, takes a glob, a title and a note,
+  and files the rule into `.ai/rules/<area>.md` — grouped by the part of the
+  codebase the glob covers, appended to an existing file when one already
+  covers that area — then regenerates `.ai/rules/index.md`, a table of every
+  glob and the file that backs it. The guidelines stanza tells every agent to
+  check the index before touching a file and read only the matching rows, so
+  a large project's rules do not all land in context at once. The server
+  never crashes on a malformed rule file; it skips it and warns.
+- **`dart_boost rules index`.** Regenerates the index from whatever is on
+  disk without touching the rule files themselves — for the one case that
+  bypasses `record_rule`: a rule file added or edited by hand, or a merge
+  conflict resolved badly.
+- **`.ai/infer-conventions.md`.** Written alongside the guidelines whenever
+  rules are enabled. Walks an agent through inferring this project's existing,
+  unwritten conventions — state management, widget composition, error
+  handling, testing, and more — from a representative sample of the code, and
+  has it present every finding with evidence before recording anything, so a
+  human decides what is a real convention and what is a coin flip.
+- **Enabling rules adds a dev dependency, once, with consent.**
+  `dart run dart_boost:mcp` only resolves when dart_boost is a dependency of
+  the target project, so the first `install` with rules turned on asks before
+  running `dart pub add dev:dart_boost` — the one pubspec edit this installer
+  ever makes, and only after an explicit yes. Unattended runs (no TTY, CI)
+  skip the edit and say so rather than editing `pubspec.yaml` on a machine
+  that never asked; the guidelines and the SDK's own MCP entry are still
+  written regardless. `--no-rules` turns the whole feature off — no server, no
+  procedure file, no dependency — and `update` remembers that choice instead
+  of silently turning it back on.
+- **`doctor` reports on rules.** The rules directory and whether it exists,
+  how many rule files parsed and how many failed to, whether dart_boost is a
+  dev dependency (and what it means if not — the server cannot start), the
+  exact server command, and whether rules are enabled in `dart_boost.json`.
+  Reported statically rather than probed: unlike `dart mcp-server`, the rules
+  server is a stdio JSON-RPC process that blocks reading its own stdin and
+  does not understand `--version`, so spawning it to check would just hang
+  `doctor`. The real question — will an agent be able to start this? — has a
+  static answer: only when dart_boost is a resolved dependency.
+- **State file split.** `dart_boost.json` now holds only what a human chose
+  (agents, feature flags, trusted packages, whether rules are on); the
+  observations a previous run recorded (resolved dependency versions, the
+  fragments they produced, the last-seen SDKs) moved to
+  `.dart_tool/dart_boost/state.json`, which is per-machine and already
+  gitignored by `.dart_tool/` convention. Keeping them together meant a
+  teammate on a different Flutter version rewrote the committed file on every
+  `update`, and made drift reporting compare against whoever last committed
+  rather than against your own previous run. A `dart_boost.json` written
+  before the split (schema version 1) is migrated automatically on the next
+  `install` or `update`: its observations are moved into the new machine-state
+  file and it is rewritten in the new, choices-only shape — nothing to do by
+  hand.
+
 ## 0.1.0
 
 Initial release: the installer, the guidelines machinery, and the first

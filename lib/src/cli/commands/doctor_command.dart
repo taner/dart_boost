@@ -2,6 +2,7 @@ import '../../agents/agent.dart';
 import '../../guidelines/composer.dart';
 import '../../guidelines/facts.dart';
 import '../../project/package_registry.dart';
+import '../../rules/rule_repository.dart';
 import '../../util/version_key.dart';
 import '../../writers/mcp_writer.dart';
 import 'boost_command.dart';
@@ -136,6 +137,54 @@ class DoctorCommand extends BoostCommand {
             ? 'responds'
             : 'no response (hidden subcommand; may be an older SDK)',
       );
+
+    // Never probe `dart run dart_boost:mcp` with McpCommandResolver.probe:
+    // unlike `dart mcp-server`, it is a stdio JSON-RPC server that blocks
+    // reading its own stdin and does not understand `--version`, so spawning
+    // it here would hang `doctor` forever. The real question -- "will an
+    // agent be able to start this?" -- has a static answer instead: only when
+    // dart_boost is a resolved dependency of the target project, because
+    // `dart run dart_boost:mcp` cannot resolve otherwise.
+    final rulesRepository = RuleRepository(
+      fileSystem: context.fileSystem,
+      projectRoot: project.root,
+    );
+    var failedRuleCount = 0;
+    final ruleFiles = rulesRepository.readAll(
+      onWarning: (_) => failedRuleCount++,
+    );
+    final rulesDirExists =
+        context.fileSystem.directory(rulesRepository.directory).existsSync();
+    final isDevDependency = project.package('dart_boost')?.isDirect ?? false;
+    final rulesEnabled =
+        context.stateStore(project.root).read()?.state.rules.enabled ?? true;
+
+    logger
+      ..blank()
+      ..heading('Rules')
+      ..field(
+        'directory',
+        context.relative(rulesRepository.directory) +
+            (rulesDirExists ? '' : ' (not found)'),
+      )
+      ..field(
+        'rule files',
+        failedRuleCount == 0
+            ? '${ruleFiles.length} rule file'
+                '${ruleFiles.length == 1 ? '' : 's'} parsed'
+            : '${ruleFiles.length} rule file'
+                '${ruleFiles.length == 1 ? '' : 's'} parsed, '
+                '$failedRuleCount failed to parse',
+      )
+      ..field(
+        'dev dependency',
+        isDevDependency
+            ? 'yes'
+            : 'not a dev dependency -- the rules server will not start '
+                '(`dart run dart_boost:mcp` cannot resolve)',
+      )
+      ..field('server command', '${spec.command} run dart_boost:mcp')
+      ..field('enabled', rulesEnabled ? 'yes' : 'no (see dart_boost.json)');
 
     if (argResults!['agents'] as bool) {
       final detector = context.detector();

@@ -11,10 +11,16 @@ dart run dart_boost@ install
 
 That reads your project, composes guidelines from the versions you actually
 resolved, writes them into every AI agent you have installed, and points each
-of those agents at the official `dart mcp-server`.
+of those agents at the official `dart mcp-server` and, once project rules are
+enabled, dart_boost's own rules server.
 
-Nothing to add to your `pubspec.yaml`, and nothing left running. It writes
-files and exits.
+Nothing to add to your `pubspec.yaml` — with `--no-rules`. Project rules are
+on by default, and turning them on means the agents need a server to talk to
+(`dart run dart_boost:mcp`), which only resolves when dart_boost is a
+dependency of your project — so the first time rules are wired up, `install`
+asks before adding itself as a dev dependency. That confirmation is the one
+thing this installer ever asks permission to add; nothing else it does starts
+a background process. It writes files and exits.
 
 ## What it writes
 
@@ -47,6 +53,11 @@ and trailing commas all survive. The spliced result is re-parsed before it is
 written, and if it does not parse, that agent is skipped and reported with its
 file untouched. A one-time `<file>.dart-boost.bak` is dropped before the first
 modification, and every write is atomic.
+
+Two server entries get written, not one: the official `dart mcp-server` from
+the SDK, and, unless you pass `--no-rules`, dart_boost's own `record_rule`
+server, launched as `dart run dart_boost:mcp`. See [Project rules](#project-rules)
+for what that server is for.
 
 Re-running is safe. A second `install` with the same inputs reports "already up
 to date" and leaves `git status` empty.
@@ -285,21 +296,65 @@ non-zero is reported and nothing more: the guidelines and MCP config are
 already on disk, and an install that wrote every file it promised has
 succeeded.
 
+## Project rules
+
+The bundled guidelines above describe Dart and Flutter in general; project
+rules describe *this* codebase — the decisions your team actually made,
+recorded as your agents make them rather than written up front and left to
+rot.
+
+`install` (unless you pass `--no-rules`) wires up a second MCP server,
+dart_boost's own, exposing one tool: `record_rule`. When an agent settles
+something durable — a naming convention, a non-obvious trap, "we use `Result`
+here, never exceptions" — it calls `record_rule` with a glob for the files
+the rule applies to, a title and a note. dart_boost files that into
+`.ai/rules/<area>.md`, grouped by the part of the codebase the glob covers, and
+regenerates `.ai/rules/index.md`: a table of every glob and which file backs
+it. The guidelines stanza dart_boost writes into every agent's file tells it
+to check that index before touching a file and read only the rows that match,
+so a large project's rules do not all land in context at once.
+
+Both `.ai/rules/*.md` and `index.md` are meant to be committed — they are your
+team's decisions, not a cache. If the index ever falls out of sync (a rule
+file edited by hand, or a merge conflict resolved badly), regenerate it
+without touching the rule files themselves:
+
+```sh
+dart run dart_boost@ rules index
+```
+
+For a project with existing, unwritten conventions, ask an agent to run the
+bundled procedure instead of recording rules one at a time: "infer this
+project's conventions" prompts it to read `.ai/infer-conventions.md` (written
+alongside the guidelines whenever rules are enabled), which walks it through
+state management, widget composition, error handling, testing and the rest,
+present what it found with evidence, and record only what you approve.
+
+Enabling rules is what the `dart_boost` dev dependency in your `pubspec.yaml`
+is for: `dart run dart_boost:mcp` is a package script, and only resolves once
+dart_boost is actually a dependency of your project. `dart run dart_boost doctor`
+reports whether that dependency is present, how many rule files parsed, and
+the exact command your agents will run. `--no-rules` turns the whole thing off
+— no server, no `.ai/infer-conventions.md`, no dev dependency added — and,
+once turned off, `update` remembers that and will not silently switch it back
+on.
+
 ## Commands
 
 ```sh
-dart run dart_boost@ doctor    # every fact it resolved, and where each came from
-dart run dart_boost@ compose   # print the composed guidelines, write nothing
-dart run dart_boost@ install   # write guidelines + MCP config
-dart run dart_boost@ update    # re-run with the choices saved by install
+dart run dart_boost@ doctor         # every fact it resolved, and where each came from
+dart run dart_boost@ compose        # print the composed guidelines, write nothing
+dart run dart_boost@ install        # write guidelines + MCP config
+dart run dart_boost@ update         # re-run with the choices saved by install
+dart run dart_boost@ rules index    # regenerate .ai/rules/index.md from disk
 ```
 
 Global flags: `-C, --directory <path>`, `--dry-run`, `--verbose`, `--version`,
 `--probe-sdk`.
 
 `install` and `update` take `--agents=<keys>`, `--yes`, `--no-guidelines`,
-`--no-mcp`, `--trust=<packages>` and `--[no-]skills`. `compose` takes `--keys`
-to list what matched instead of printing the text.
+`--no-mcp`, `--[no-]rules`, `--trust=<packages>` and `--[no-]skills`. `compose`
+takes `--keys` to list what matched instead of printing the text.
 
 Start with `doctor` if anything surprises you: it prints every resolved fact
 next to the file it came from, so a wrong fragment is traceable to a wrong
@@ -338,30 +393,51 @@ already on file without re-asking.
 
 ## State
 
-`dart_boost.json` at the project root records what `install` chose, so `update`
-can repeat it and report drift:
+`install` writes two state files, split by who they are for.
+
+**`dart_boost.json`**, at the project root, is what a human chose:
 
 ```jsonc
 {
-  "version": 1,
+  "version": 2,
   "agents": ["claude_code", "copilot", "codex"],
   "features": { "guidelines": true, "mcp": true },
   "thirdPartyPackages": ["serverpod"],
   "delegateSkills": false,
-  "dependencies": { "go_router": "18.2.0", "riverpod": "3.0.1" },
-  "fragments": ["foundation", "dart", "dart/v3.13", "go_router/core", "go_router/v18"],
-  "lastRun": { "flutter": "3.47.2", "dart": "3.13.2", "boostVersion": "0.1.0" }
+  "rules": { "enabled": true }
 }
 ```
 
-Commit it. It is the record of what your team's agents were configured with,
-and `update` diffs against it — an SDK bump shows up as
-`Flutter 3.47.2 -> 3.44.9` rather than as guidance that quietly went stale.
+**Commit it.** It is the record of what your team's agents were configured
+with — which agents, whether third-party guidelines were trusted, whether
+project rules are on — and `update` repeats those choices rather than
+re-asking. Nothing in it depends on which machine ran `install`.
 
-`dependencies` is the direct dependency set as the last run resolved it, name
-to version (`-` for an SDK, path or git dependency, which has none), and
-`fragments` is the keys that run actually composed. Together they let `update`
-report what moved, and what it meant:
+**`.dart_tool/dart_boost/state.json`** is what the last run *observed*, as
+opposed to chose — the resolved SDKs and dependency versions, and the fragment
+keys they produced:
+
+```jsonc
+{
+  "version": 2,
+  "dependencies": { "go_router": "18.2.0", "riverpod": "3.0.1" },
+  "fragments": ["foundation", "dart", "dart/v3.13", "go_router/core", "go_router/v18"],
+  "lastRun": { "flutter": "3.47.2", "dart": "3.13.2", "boostVersion": "0.2.0" }
+}
+```
+
+**Never commit it** — it already lives under `.dart_tool/`, which every Dart
+project gitignores. These values differ per machine: committing them made
+every teammate on a different SDK rewrite the file on their next `update`, and
+made drift reporting compare your run against whoever last committed rather
+than against your own previous run. Splitting it out is what keeps
+`dart_boost.json` quiet unless a human actually changed a choice.
+
+`update` diffs against both files. An SDK bump shows up as
+`Flutter 3.47.2 -> 3.44.9` rather than as guidance that quietly went stale, and
+`dependencies`/`fragments` — the direct dependency set by version, and the
+fragment keys that run actually composed — let it report what moved and what
+it meant:
 
 ```sh
 Dependencies since the last run
@@ -380,11 +456,16 @@ changes* is the honest answer to "so what?", since most packages have no
 fragment at all. Direct dependencies only: a transitive bump is pub's business,
 not something you did between two runs.
 
-Both keys are **nullable**, and `null` does not mean empty. A state file
-written before dart_boost recorded them has no baseline, so `update` says
-nothing about what changed rather than announcing every existing dependency as
-newly added; it notes that the next run will be able to diff, and writes both
-keys on its way out.
+Both `dependencies` and `fragments` are **nullable**, and `null` does not mean
+empty. A state file with no baseline yet says nothing about what changed
+rather than announcing every existing dependency as newly added; it notes that
+the next run will be able to diff, and writes both keys on its way out.
+
+A `dart_boost.json` from before this split (schema version 1) held both halves
+together. The first `install` or `update` against one migrates automatically:
+the observations move into `.dart_tool/dart_boost/state.json`, and
+`dart_boost.json` is rewritten in the new, choices-only shape. Nothing to do
+by hand.
 
 ## Requirements
 
@@ -393,9 +474,8 @@ and Windows.
 
 ## Status
 
-0.1.0. The machinery is complete and tested; the fragment library is the part
-that keeps growing. Still to come: path-scoped rules and coverage of more of
-the package ecosystem.
+0.2.0. The machinery is complete and tested; the fragment library is the part
+that keeps growing. Still to come: coverage of more of the package ecosystem.
 
 ## License
 
