@@ -121,6 +121,7 @@ void main() {
     test('go_router 18 picks the 18 fragment and nothing else', () {
       expect(keysFor({'go_router': '18.0.1 direct main'}), [
         'foundation',
+        'project',
         'dart',
         'go_router/core',
         'go_router/v18',
@@ -151,6 +152,7 @@ void main() {
     test('get_it 9 picks the 9 fragment', () {
       expect(keysFor({'get_it': '9.2.1 direct main'}), [
         'foundation',
+        'project',
         'dart',
         'get_it/core',
         'get_it/v9',
@@ -169,6 +171,7 @@ void main() {
       // no version directory -- and the composer must not invent one.
       expect(keysFor({'json_serializable': '6.14.1 direct dev'}), [
         'foundation',
+        'project',
         'dart',
         'json_serializable/core',
       ]);
@@ -215,11 +218,19 @@ void main() {
 
   group('mustBeDirect', () {
     test('a transitive get_it contributes nothing', () {
-      expect(keysFor({'get_it': '9.2.1 transitive'}), ['foundation', 'dart']);
+      expect(keysFor({'get_it': '9.2.1 transitive'}), [
+        'foundation',
+        'project',
+        'dart',
+      ]);
     });
 
     test('a transitive dio contributes nothing', () {
-      expect(keysFor({'dio': '5.11.1 transitive'}), ['foundation', 'dart']);
+      expect(keysFor({'dio': '5.11.1 transitive'}), [
+        'foundation',
+        'project',
+        'dart',
+      ]);
     });
   });
 }

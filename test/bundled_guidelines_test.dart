@@ -104,6 +104,7 @@ void main() {
     // this file.
     const expected = <String>[
       'foundation',
+      'project',
       'dart/core',
       // The Dart SDK is version-keyed the same way Flutter is: 3.13 released
       // primary constructors plus `List.unmodifiableOf`, `Map.unmodifiableOf`,
@@ -170,7 +171,7 @@ void main() {
       final parts = key.split('/');
 
       final reachable = switch (parts) {
-        ['foundation'] => true,
+        ['foundation'] || ['project'] => true,
         // `flutter/3.47/core` and `dart/3.13/core` only -- the composer adds
         // no sibling files for an SDK the way it does for packages.
         ['flutter' || 'dart', final version, 'core'] => RegExp(

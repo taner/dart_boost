@@ -101,6 +101,9 @@ class GuidelineComposer {
 
     // --- core (always) ---
     add('foundation', assets.fragment('foundation'));
+    // Unconditional, deliberately: a `hasProjectRules` flag would leave the
+    // first rule an agent records unannounced until the next install/update.
+    add('project', assets.fragment('project'));
     add('dart', assets.fragment('dart/core'));
     // Keyed on the Dart SDK the same way Flutter is, and deliberately outside
     // the `isFlutterProject` branch below: a Dart-only project has a Dart
