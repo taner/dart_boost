@@ -98,4 +98,29 @@ void main() {
     expect(store.file.path, '/app/.dart_tool/dart_boost/state.json');
     expect(store.read()!.dependencies, <String, String>{'dio': '5.11.1'});
   });
+
+  test('a v1 file with a corrupt observation warns during migration, '
+      'not just silently', () {
+    // `dependencies` present but wrong-typed: not an absent key (which
+    // would quietly mean "predates this field") and not a valid one either.
+    // The migration path shares `MachineState.fromJson` with
+    // `MachineStateStore`, so it must forward `onWarning` the same way.
+    writeV1(<String, Object?>{
+      'version': 1,
+      'agents': <String>['claude_code'],
+      'features': <String, Object?>{'guidelines': true, 'mcp': true},
+      'dependencies': 'not a map',
+    });
+    final warnings = <String>[];
+
+    final result =
+        BoostStateStore(
+          fs,
+          fs.directory('/app'),
+        ).read(onWarning: warnings.add)!;
+
+    expect(result.migrated!.dependencies, isNull);
+    expect(warnings, hasLength(1));
+    expect(warnings.single, contains('dependencies'));
+  });
 }

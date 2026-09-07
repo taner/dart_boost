@@ -126,5 +126,91 @@ void main() {
       expect(read.fragments, isNull);
       expect(read.lastRun, isNull);
     });
+
+    // A genuinely empty map/list is a real baseline ("no dependencies"), not
+    // the same as the key being absent. A wrong-typed *value* is neither of
+    // those -- it is corruption -- and must not be silently coerced into that
+    // same empty baseline, or the next `update` would announce every current
+    // dependency as newly added with no sign anything was wrong.
+    group('a present key with the wrong type', () {
+      test('dependencies: not a map becomes null, with a warning', () {
+        machineStore.file.parent.createSync(recursive: true);
+        machineStore.file.writeAsStringSync(
+          jsonEncode({'version': 2, 'dependencies': 'oops'}),
+        );
+        final warnings = <String>[];
+
+        final read = machineStore.read(onWarning: warnings.add)!;
+
+        expect(read.dependencies, isNull);
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('dependencies'));
+      });
+
+      test('fragments: not a list becomes null, with a warning', () {
+        machineStore.file.parent.createSync(recursive: true);
+        machineStore.file.writeAsStringSync(
+          jsonEncode({'version': 2, 'fragments': 42}),
+        );
+        final warnings = <String>[];
+
+        final read = machineStore.read(onWarning: warnings.add)!;
+
+        expect(read.fragments, isNull);
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('fragments'));
+      });
+
+      test('lastRun: not a map becomes null, with a warning', () {
+        machineStore.file.parent.createSync(recursive: true);
+        machineStore.file.writeAsStringSync(
+          jsonEncode({
+            'version': 2,
+            'lastRun': ['not', 'a', 'map'],
+          }),
+        );
+        final warnings = <String>[];
+
+        final read = machineStore.read(onWarning: warnings.add)!;
+
+        expect(read.lastRun, isNull);
+        expect(warnings, hasLength(1));
+        expect(warnings.single, contains('lastRun'));
+      });
+
+      test('nothing throws for any wrong-typed field', () {
+        machineStore.file.parent.createSync(recursive: true);
+        machineStore.file.writeAsStringSync(
+          jsonEncode({
+            'version': 2,
+            'dependencies': 'oops',
+            'fragments': 42,
+            'lastRun': true,
+          }),
+        );
+
+        expect(() => machineStore.read(onWarning: (_) {}), returnsNormally);
+      });
+    });
+
+    test('a genuinely empty map/list still round-trips as empty, not null', () {
+      machineStore.file.parent.createSync(recursive: true);
+      machineStore.file.writeAsStringSync(
+        jsonEncode({
+          'version': 2,
+          'dependencies': <String, Object?>{},
+          'fragments': <Object?>[],
+        }),
+      );
+      final warnings = <String>[];
+
+      final read = machineStore.read(onWarning: warnings.add)!;
+
+      expect(read.dependencies, isNotNull);
+      expect(read.dependencies, isEmpty);
+      expect(read.fragments, isNotNull);
+      expect(read.fragments, isEmpty);
+      expect(warnings, isEmpty);
+    });
   });
 }

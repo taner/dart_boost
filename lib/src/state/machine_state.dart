@@ -55,30 +55,80 @@ class MachineState {
     if (lastRun != null) 'lastRun': lastRun!.toJson(),
   };
 
-  static MachineState fromJson(Map<String, Object?> json) => MachineState(
-    dependencies:
-        json.containsKey('dependencies')
-            ? _stringMap(json['dependencies'])
-            : null,
-    fragments:
-        json.containsKey('fragments') ? _strings(json['fragments']) : null,
-    lastRun:
-        json['lastRun'] is Map<String, Object?>
-            ? LastRun.fromJson(json['lastRun']! as Map<String, Object?>)
-            : null,
+  /// A key that is merely absent means "predates this field" and stays quiet
+  /// -- that is the normal case for every state file written before it. A key
+  /// that is *present* with the wrong type is a corrupt file, not an absent
+  /// one, and must not be silently coerced into the empty collection: an
+  /// empty map/list is a real, meaningful baseline ("this project has no
+  /// dependencies"), so treating garbage the same way would make the next
+  /// `update` announce every current dependency as newly added with no sign
+  /// anything was wrong. So a wrong-typed value is reported and treated as
+  /// absent (`null`), same as a missing key.
+  static MachineState fromJson(
+    Map<String, Object?> json, {
+    void Function(String)? onWarning,
+  }) => MachineState(
+    dependencies: _readMap(json, 'dependencies', onWarning),
+    fragments: _readList(json, 'fragments', onWarning),
+    lastRun: _readLastRun(json, onWarning),
   );
 
-  static List<String> _strings(Object? value) =>
-      value is List ? value.whereType<String>().toList() : <String>[];
-
-  static Map<String, String> _stringMap(Object? value) {
-    if (value is! Map) return <String, String>{};
-    return <String, String>{
-      for (final entry in value.entries)
-        if (entry.key is String && entry.value is String)
-          entry.key as String: entry.value as String,
-    };
+  static Map<String, String>? _readMap(
+    Map<String, Object?> json,
+    String key,
+    void Function(String)? onWarning,
+  ) {
+    if (!json.containsKey(key)) return null;
+    final value = json[key];
+    if (value is! Map) {
+      onWarning?.call(
+        'Ignoring "$key": expected a map, found ${value.runtimeType}.',
+      );
+      return null;
+    }
+    return _stringMap(value);
   }
+
+  static List<String>? _readList(
+    Map<String, Object?> json,
+    String key,
+    void Function(String)? onWarning,
+  ) {
+    if (!json.containsKey(key)) return null;
+    final value = json[key];
+    if (value is! List) {
+      onWarning?.call(
+        'Ignoring "$key": expected a list, found ${value.runtimeType}.',
+      );
+      return null;
+    }
+    return _strings(value);
+  }
+
+  static LastRun? _readLastRun(
+    Map<String, Object?> json,
+    void Function(String)? onWarning,
+  ) {
+    if (!json.containsKey('lastRun')) return null;
+    final value = json['lastRun'];
+    if (value is! Map<String, Object?>) {
+      onWarning?.call(
+        'Ignoring "lastRun": expected a map, found ${value.runtimeType}.',
+      );
+      return null;
+    }
+    return LastRun.fromJson(value);
+  }
+
+  static List<String> _strings(List<Object?> value) =>
+      value.whereType<String>().toList();
+
+  static Map<String, String> _stringMap(Map<Object?, Object?> value) =>
+      <String, String>{
+        for (final entry in value.entries)
+          if (entry.key is String && entry.value is String)
+            entry.key as String: entry.value as String,
+      };
 }
 
 /// Lets `update` say "Flutter 3.44 -> 3.47, re-composing" and spot a stale
@@ -126,7 +176,7 @@ class MachineStateStore {
     try {
       final decoded = jsonDecode(file.readAsStringSync());
       if (decoded is! Map<String, Object?>) return null;
-      return MachineState.fromJson(decoded);
+      return MachineState.fromJson(decoded, onWarning: onWarning);
     } on Object catch (error) {
       onWarning?.call('Ignoring unreadable ${file.path}: $error');
       return null;

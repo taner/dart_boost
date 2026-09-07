@@ -140,7 +140,10 @@ class BoostStateStore {
 
       if (version >= 2) return (state: state, migrated: null);
 
-      return (state: state, migrated: MachineState.fromJson(decoded));
+      return (
+        state: state,
+        migrated: MachineState.fromJson(decoded, onWarning: onWarning),
+      );
     } on Object catch (error) {
       onWarning?.call('Ignoring unreadable ${file.path}: $error');
       return null;
