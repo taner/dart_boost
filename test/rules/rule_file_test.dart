@@ -51,6 +51,44 @@ Use `int` cents.
       expect(file.paths, <String>['test/**']);
       expect(file.body, '# Testing');
     });
+
+    test('handles closing delimiter with 4 dashes', () {
+      const content = '''
+---
+paths:
+  - lib/**
+----
+
+# Body Heading
+
+Some content.
+''';
+
+      final file = RuleFile.parse('.ai/rules/test.md', content)!;
+
+      expect(file.paths, <String>['lib/**']);
+      expect(file.body, '# Body Heading\n\nSome content.');
+    });
+
+    test('preserves horizontal rule (---) inside body', () {
+      const content = '''
+---
+paths:
+  - lib/**
+---
+
+intro
+
+---
+
+more
+''';
+
+      final file = RuleFile.parse('.ai/rules/test.md', content)!;
+
+      expect(file.paths, <String>['lib/**']);
+      expect(file.body, 'intro\n\n---\n\nmore');
+    });
   });
 
   group('renderRuleFile', () {
@@ -136,5 +174,28 @@ Just body text without a heading.
         expect(file.bodyWithoutHeading, 'Just body text without a heading.');
       },
     );
+  });
+
+  group('RuleFile.render()', () {
+    test('parse then render produces byte-for-byte identical output', () {
+      final original = '''
+---
+paths:
+  - lib/models/**
+  - lib/entities/**
+---
+
+# Models
+
+## Money is integer cents
+
+Use `int` cents.
+''';
+
+      final parsed = RuleFile.parse('.ai/rules/models.md', original)!;
+      final rendered = parsed.render();
+
+      expect(rendered, original);
+    });
   });
 }

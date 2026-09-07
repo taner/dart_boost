@@ -41,8 +41,25 @@ class RuleFile {
     final end = normalized.indexOf('\n---', 3);
     if (end == -1) return null;
 
+    // Find the end of the closing delimiter line.
+    // After '\n---', there might be more dashes, then a newline or end of string.
+    int delimEnd = end + 4; // Position after '\n---'
+    while (delimEnd < normalized.length && normalized[delimEnd] == '-') {
+      delimEnd++;
+    }
+
+    // Verify we're at a newline or end of string (no other characters)
+    if (delimEnd < normalized.length && normalized[delimEnd] != '\n') {
+      return null; // Invalid delimiter: has non-dash characters
+    }
+
+    // Skip the newline if present
+    if (delimEnd < normalized.length && normalized[delimEnd] == '\n') {
+      delimEnd++;
+    }
+
     final frontmatter = normalized.substring(4, end + 1);
-    final body = normalized.substring(end + 4).trim();
+    final body = normalized.substring(delimEnd).trim();
 
     final Object? parsed;
     try {
