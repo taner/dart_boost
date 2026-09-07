@@ -8,8 +8,10 @@ compared against the current Boost, not the Boost of a year ago.
 
 ## The three layers
 
-Boost gives agents context at three levels. dart_boost currently implements only
-the first.
+Boost gives agents context at three levels. dart_boost implements the first and
+third directly — guidelines, and, via its own `record_rule` MCP server, project
+rules. The second, skills, it deliberately hands off to `package:skills`
+instead of reimplementing (see the README's "Why this and not a Boost port").
 
 | Aspect | Guidelines | Skills | Project Rules |
 | --- | --- | --- | --- |
@@ -54,7 +56,9 @@ part dart_boost deliberately does not reimplement, because `dart mcp-server`
 already covers the analogous ground (`analyze_files`, `lsp`, `run_tests`,
 `hot_reload`, `widget_inspector`, `get_runtime_errors`, `vm_service`).
 
-`Record Rule` and `Search Docs` are the two with **no Dart equivalent**.
+`Record Rule` now has a Dart equivalent: dart_boost's own `record_rule`, the
+one tool on `dart run dart_boost:mcp`. `Search Docs` is still the one with **no
+Dart equivalent**.
 
 ## Guidelines
 
@@ -95,7 +99,10 @@ tailwindcss-development, volt-development, wayfinder-development.
 Custom skills go in `.ai/skills/{name}/SKILL.md`; a matching name overrides a
 built-in. Third-party packages ship `resources/boost/skills/{name}/SKILL.md`.
 
-## Project Rules  ← the feature dart_boost lacks
+## Project Rules
+
+dart_boost now has this too — see "Implications for dart_boost" below for what
+carried over and what didn't.
 
 > "While guidelines and skills teach agents how to write Laravel, project rules
 > teach them how to write your application."
@@ -209,17 +216,27 @@ is the analogue, but closed — agents are compiled in, not registrable.
 
 ## Implications for dart_boost
 
-1. **Path-scoped rules** (dart_boost's stated next feature) is Boost's Project
-   Rules. The index-file indirection is the load-bearing idea: a glob table the
-   agent reads first, so only matching rules enter context.
-2. **Recording requires a callable tool.** dart_boost ships no MCP server by
-   design, and `dart mcp-server` will not grow a `record_rule` tool. Either that
-   design decision gets revisited for a minimal rules-only server, or recording
-   happens some other way (a CLI command the agent shells out to, or a skill that
-   writes the files and regenerates the index itself).
-3. **`infer-conventions` has no dart_boost analogue** and is the cheaper half —
-   it needs no MCP server at all, only a skill plus a file format.
+Items 1-3 below were written as forward-looking design notes before dart_boost
+had project rules. All three shipped; the notes are kept as a record of what
+was decided and why, now in the past tense.
+
+1. **Project rules shipped, built on the index-file indirection.**
+   `record_rule` writes into `.ai/rules/<area>.md` and regenerates
+   `.ai/rules/index.md`, the same glob table Boost uses, for the same reason:
+   a table the agent reads first, so only matching rules enter context.
+2. **Recording needed a callable tool, so dart_boost grew a minimal one.** The
+   "ships no MCP server" design decision from the first draft of this file
+   *was* revisited, but narrowly: `dart run dart_boost:mcp` exposes exactly one
+   tool, `record_rule`. It does not reimplement any of `dart mcp-server`'s
+   introspection tools, and is wired in as a second server alongside it, not
+   instead of it. Enabling it adds `dart_boost` as a dev dependency (with
+   consent) because that command only resolves once dart_boost is one.
+3. **`infer-conventions` shipped as a procedure, not a skill.** dart_boost has
+   no skills mechanism of its own (see "Agent Skills" above), so the
+   equivalent is `.ai/infer-conventions.md`, a bundled file an agent is told to
+   read and follow when asked to infer a project's conventions — no MCP server
+   involved, matching the original prediction that this was the cheaper half.
 4. **Docs search is a genuine ecosystem gap**, and a much larger undertaking than
-   rules (hosting, embeddings, ingestion).
+   rules (hosting, embeddings, ingestion). Still unaddressed.
 5. Boost auto-loads third-party guidelines; dart_boost gates them behind
    `--trust=`. dart_boost's position is the safer one — worth keeping.

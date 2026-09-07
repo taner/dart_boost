@@ -74,8 +74,15 @@ the Dart ecosystem, and are better than anything a port would produce:
 | Package-shipped guidelines | **Agent Skills**. `dart run skills@ get` reads your pubspec and installs into `.claude/skills/`, `.cursor/skills/`, and the rest. |
 | Curated first-party library | **`flutter/agent-plugins`** and **`dart-lang/skills`**. |
 
-So dart_boost ships **no MCP server of its own**. What is genuinely missing is
-the other two thirds:
+So dart_boost does not port Boost's MCP server wholesale — `dart mcp-server`'s
+~24 introspection tools already cover that ground better than a port would,
+and reimplementing `analyze_files` or `hot_reload` badly would be a step
+backward. It does ship **one purpose-built tool of its own**: `record_rule`,
+run via `dart run dart_boost:mcp`. Recording a rule mid-session needs
+something an agent can *call*, and neither `dart mcp-server` nor any existing
+package gives it one, so that is the one place a small server earns its keep
+— everything else it might have reimplemented, it doesn't. What is genuinely
+missing beyond that is the other two thirds:
 
 1. **A unified installer.** Wiring a project up today means `claude plugin
    install …` *and* `npx skills add …` *and* hand-editing `.vscode/mcp.json`
@@ -132,7 +139,7 @@ is lost; the rule only decides which package supplies the version key. The one
 suppression that does drop guidance is `mocktail` over `mockito`, where the two
 genuinely disagree.
 
-### What ships in 0.1.0
+### What ships in 0.2.0
 
 | Fragments | Version directories |
 | --- | --- |
