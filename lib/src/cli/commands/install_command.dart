@@ -3,6 +3,7 @@ import 'package:args/args.dart';
 import '../../agents/agent.dart';
 import '../../install/dependency_drift.dart';
 import '../../install/installer.dart';
+import '../../install/rules_wiring.dart';
 import '../../install/skills_delegate.dart';
 import '../../project/project.dart';
 import '../../state/boost_state.dart';
@@ -50,6 +51,14 @@ void addInstallOptions(ArgParser parser) {
       help: 'Write the guidelines file.',
     )
     ..addFlag('mcp', defaultsTo: true, help: 'Write the MCP server entry.')
+    ..addFlag(
+      'rules',
+      defaultsTo: true,
+      help:
+          'Wire the dart_boost rules MCP server, confirming a dev dependency '
+          'if one is needed. Once turned off, `update` will not turn it back '
+          'on by itself.',
+    )
     ..addMultiOption(
       'trust',
       valueHelp: 'package',
@@ -147,6 +156,8 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
     agents: agents,
     guidelines: (args['guidelines'] as bool) && (previous?.guidelines ?? true),
     mcp: (args['mcp'] as bool) && (previous?.mcp ?? true),
+    rules: (args['rules'] as bool) && (previous?.rules.enabled ?? true),
+    assumeYes: args['yes'] as bool,
     trustedThirdParty: trusted,
   );
 
@@ -155,7 +166,7 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
     return 0;
   }
 
-  final report = Installer(
+  final report = await Installer(
     context,
   ).run(project: project, assets: assets, plan: plan);
 
@@ -181,7 +192,10 @@ Future<int> runInstall(BoostCommand command, {required bool isUpdate}) async {
           skills,
           previous: previous?.delegateSkills ?? false,
         ),
-        rules: previous?.rules ?? const RulesSettings(),
+        // Persist this run's own decision, exactly like guidelines/mcp above:
+        // once `--no-rules` turns the feature off, `update` must repeat that
+        // rather than silently switching it back on.
+        rules: RulesSettings(enabled: plan.rules),
       ),
     );
     machineStore.write(
@@ -451,6 +465,21 @@ void _report(BoostCommand command, InstallReport report, InstallPlan plan) {
           logger.skipped(line);
         case McpWriteOutcome.created:
         case McpWriteOutcome.updated:
+          logger.success(line);
+      }
+    }
+    final rulesOutcome = report.rulesOutcome;
+    if (rulesOutcome != null) {
+      final line = 'dart_boost (rules)'.padRight(28) + rulesOutcome.label;
+      switch (rulesOutcome) {
+        case RulesWiringOutcome.failed:
+          logger.error(line);
+        case RulesWiringOutcome.disabled:
+        case RulesWiringOutcome.declined:
+        case RulesWiringOutcome.skippedUnattended:
+          logger.skipped(line);
+        case RulesWiringOutcome.alreadyPresent:
+        case RulesWiringOutcome.added:
           logger.success(line);
       }
     }

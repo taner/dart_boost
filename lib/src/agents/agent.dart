@@ -4,11 +4,14 @@ import 'package:path/path.dart' as p;
 /// How an agent's MCP config file is encoded.
 enum McpFormat { json, jsonc, toml }
 
-/// The server we configure. There is deliberately only ever one: the official
-/// `dart mcp-server` that ships in the Dart SDK. dart_boost does not implement
-/// an MCP server of its own -- `dart mcp-server` already exposes ~24 tools
-/// (`analyze_files`, `lsp`, `run_tests`, `hot_reload`, `widget_inspector`,
-/// `get_runtime_errors`, ...) and connects to running apps through DTD.
+/// A server to wire into an agent's MCP config.
+///
+/// Two are ever written: the official `dart mcp-server` that ships in the
+/// Dart SDK -- it already exposes ~24 tools (`analyze_files`, `lsp`,
+/// `run_tests`, `hot_reload`, `widget_inspector`, `get_runtime_errors`, ...)
+/// and connects to running apps through DTD -- and, when project rules are
+/// wired up, dart_boost's own `record_rule` server, run via
+/// `dart run dart_boost:mcp`.
 class McpServerSpec {
   const McpServerSpec({
     this.key = 'dart',

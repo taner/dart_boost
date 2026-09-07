@@ -9,18 +9,31 @@ import '../guidelines/facts.dart';
 import '../project/project.dart';
 import '../writers/guidelines_writer.dart';
 import '../writers/mcp_writer.dart';
+import 'rules_wiring.dart';
 
 class InstallPlan {
   const InstallPlan({
     required this.agents,
     this.guidelines = true,
     this.mcp = true,
+    this.rules = true,
+    this.assumeYes = false,
     this.trustedThirdParty = const <String>[],
   });
 
   final List<Agent> agents;
   final bool guidelines;
   final bool mcp;
+
+  /// Whether to wire the `dart_boost` rules MCP server. Gated separately from
+  /// [mcp] because, unlike the SDK server, it can mean adding a dev
+  /// dependency -- see [RulesWiringOutcome].
+  final bool rules;
+
+  /// Whether `--yes` was passed. Rules wiring treats this exactly like the
+  /// absence of a TTY: either way there is no one to confirm a pubspec edit.
+  final bool assumeYes;
+
   final List<String> trustedThirdParty;
 }
 
@@ -47,6 +60,7 @@ class InstallReport {
     required this.mcpWrites,
     required this.spec,
     this.mcpAvailable = true,
+    this.rulesOutcome,
     this.warnings = const <String>[],
   });
 
@@ -57,6 +71,9 @@ class InstallReport {
 
   /// Whether `dart mcp-server --version` answered.
   final bool mcpAvailable;
+
+  /// `null` when [InstallPlan.mcp] was off -- there was nothing to wire.
+  final RulesWiringOutcome? rulesOutcome;
 
   final List<String> warnings;
 
@@ -69,11 +86,11 @@ class Installer {
 
   final BoostContext context;
 
-  InstallReport run({
+  Future<InstallReport> run({
     required Project project,
     required BundledAssets assets,
     required InstallPlan plan,
-  }) {
+  }) async {
     final warnings = <String>[];
 
     final facts = GuidelineFacts.forProject(project);
@@ -115,7 +132,11 @@ class Installer {
 
     var mcpAvailable = true;
     final mcpWrites = <McpWriteReport>[];
+    RulesWiringOutcome? rulesOutcome;
     if (plan.mcp) {
+      // Never probe the rules server here: unlike `dart mcp-server`, it is a
+      // stdio JSON-RPC server that blocks reading its own stdin, so appending
+      // `--version` and running it would just hang the install.
       mcpAvailable = McpCommandResolver.probe(spec, context.processRunner);
       if (!mcpAvailable) {
         warnings.add(
@@ -125,13 +146,36 @@ class Installer {
           'upgrade the SDK if the server fails to start.',
         );
       }
+
+      rulesOutcome =
+          plan.rules
+              ? await ensureDevDependency(
+                project: project,
+                processes: context.processRunner,
+                interactive: !plan.assumeYes && context.interactive,
+                dryRun: context.dryRun,
+                confirm: context.dialogs.confirm,
+                log: warnings.add,
+              )
+              : RulesWiringOutcome.disabled;
+
+      final specs = <McpServerSpec>[
+        spec,
+        if (rulesOutcome.resolvable)
+          McpServerSpec(
+            key: 'dart_boost',
+            command: spec.command,
+            args: const <String>['run', 'dart_boost:mcp'],
+          ),
+      ];
+
       final writer = McpWriter(
         fileSystem: context.fileSystem,
         dryRun: context.dryRun,
       );
       for (final agent in plan.agents) {
         mcpWrites.add(
-          writer.write(agent: agent, projectRoot: project.root, spec: spec),
+          writer.write(agent: agent, projectRoot: project.root, specs: specs),
         );
       }
     }
@@ -142,6 +186,7 @@ class Installer {
       mcpWrites: mcpWrites,
       spec: spec,
       mcpAvailable: mcpAvailable,
+      rulesOutcome: rulesOutcome,
       warnings: warnings,
     );
   }

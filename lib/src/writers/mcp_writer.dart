@@ -92,20 +92,27 @@ class McpWriter {
   McpWriteReport write({
     required Agent agent,
     required Directory projectRoot,
-    required McpServerSpec spec,
+    required List<McpServerSpec> specs,
   }) {
     final path = agent.mcpConfigPath(projectRoot, fileSystem);
     final file = fileSystem.file(path);
     final existing = file.existsSync() ? file.readAsStringSync() : '';
-    final entry = agent.mcpEntry(spec);
 
+    // One splice per agent, from every spec at once: splicing twice would
+    // both double the change reports and make "unchanged" detection see the
+    // first splice's own output as the "existing" content for the second.
     final result = switch (agent.mcpFormat) {
-      McpFormat.toml => TomlConfigSplicer(
-        configKey: agent.mcpConfigKey,
-      ).splice(existing, <String, Map<String, Object?>>{spec.key: entry}),
+      McpFormat.toml => TomlConfigSplicer(configKey: agent.mcpConfigKey).splice(
+        existing,
+        <String, Map<String, Object?>>{
+          for (final spec in specs) spec.key: agent.mcpEntry(spec),
+        },
+      ),
       McpFormat.json || McpFormat.jsonc => JsonConfigSplicer(
         configKey: agent.mcpConfigKey,
-      ).splice(existing, <String, Object?>{spec.key: entry}),
+      ).splice(existing, <String, Object?>{
+        for (final spec in specs) spec.key: agent.mcpEntry(spec),
+      }),
     };
 
     if (!result.ok) {

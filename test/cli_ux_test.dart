@@ -489,7 +489,10 @@ void main() {
         selections: <Set<int>?>[
           <int>{0},
         ],
-        confirmations: <bool>[true, false],
+        // Proceed?, then decline adding dart_boost as a dev dependency (this
+        // project has no dart_boost dependency, so rules wiring also asks),
+        // then decline the skills hand-off.
+        confirmations: <bool>[true, false, false],
       );
 
       await run(['-C', appDir(), 'install'], dialogs: dialogs);
