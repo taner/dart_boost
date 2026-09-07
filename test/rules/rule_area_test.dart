@@ -60,15 +60,18 @@ void main() {
       );
     });
 
-    test('converts backslashes and strips a leading slash', () {
+    test('converts backslashes', () {
       expect(
         normalizeGlob(r'lib\models\**', projectRoot: '/app'),
         'lib/models/**',
       );
-      expect(
-        normalizeGlob('/lib/models/**', projectRoot: '/app'),
-        'lib/models/**',
-      );
+    });
+
+    test('rejects absolute paths outside the project root', () {
+      expect(normalizeGlob('/lib/models/**', projectRoot: '/app'), isNull);
+      expect(normalizeGlob('/etc/passwd', projectRoot: '/app'), isNull);
+      expect(normalizeGlob('/application/x', projectRoot: '/app'), isNull);
+      expect(normalizeGlob('/appdata/x', projectRoot: '/app'), isNull);
     });
 
     test('rejects a glob that escapes the project root', () {

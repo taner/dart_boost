@@ -52,13 +52,13 @@ String? normalizeGlob(String glob, {required String projectRoot}) {
   if (value.startsWith(root)) {
     value = value.substring(root.length);
   } else {
-    // Not under root prefix. Check for absolute paths that might be problematic.
-    // Drive letters and UNC paths must be under the root or they're rejected.
-    if (RegExp(r'^[a-zA-Z]:').hasMatch(value) || value.startsWith('//')) {
+    // Not under root prefix. Reject any absolute path form (POSIX, Windows, UNC).
+    // Do not strip leading slashes from paths not shown to be inside the root.
+    if (p.posix.isAbsolute(value) ||
+        RegExp(r'^[a-zA-Z]:').hasMatch(value) ||
+        value.startsWith('//')) {
       return null;
     }
-    // Strip leading slashes for relative interpretation.
-    value = value.replaceAll(RegExp('^/+'), '');
   }
 
   if (value.isEmpty) return null;
