@@ -117,6 +117,23 @@ void main() {
     expect(read('/app/.ai/rules/index.md'), isNot(contains('broken.md')));
   });
 
+  test('appending to a CRLF rule file preserves its line endings', () {
+    fs.directory('/app/.ai/rules').createSync(recursive: true);
+    fs
+        .file('/app/.ai/rules/models.md')
+        .writeAsStringSync(
+          '---\r\npaths:\r\n  - lib/models/**\r\n---\r\n\r\n'
+          '# Models\r\n\r\n## First\r\n\r\nOne.\r\n',
+        );
+
+    repo.write(glob: 'lib/models/*.dart', title: 'Second', note: 'Two.');
+
+    final content = read('/app/.ai/rules/models.md');
+    expect(content, contains('\r\n'));
+    expect(content, isNot(contains(RegExp(r'(?<!\r)\n'))));
+    expect(content, contains('## Second\r\n\r\nTwo.'));
+  });
+
   test('writing the same rule twice does not duplicate the glob', () {
     repo.write(glob: 'lib/models/**', title: 'A', note: 'a');
     repo.write(glob: 'lib/models/**', title: 'B', note: 'b');

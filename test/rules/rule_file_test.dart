@@ -44,12 +44,27 @@ Use `int` cents.
     });
 
     test('round-trips CRLF content without corrupting it', () {
-      const content =
-          '---\r\npaths:\r\n  - test/**\r\n---\r\n\r\n# Testing\r\n';
+      final content = '''
+---
+paths:
+  - test/**
+---
+
+# Testing
+
+## A rule
+
+Some note.
+'''.replaceAll('\n', '\r\n');
       final file = RuleFile.parse('.ai/rules/test.md', content)!;
 
       expect(file.paths, <String>['test/**']);
-      expect(file.body, '# Testing');
+      expect(file.body, contains('# Testing'));
+
+      // The point of this test: rendering back out must restore CRLF, not
+      // just parse it away. A plain `parse` assertion cannot catch a writer
+      // that silently downgrades the file to LF.
+      expect(file.render(), content);
     });
 
     test('handles closing delimiter with 4 dashes', () {

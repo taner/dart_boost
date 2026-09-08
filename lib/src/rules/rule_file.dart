@@ -6,7 +6,12 @@ import 'package:yaml/yaml.dart';
 /// must not take down index regeneration -- it is skipped and reported, and
 /// left on disk exactly as it was.
 class RuleFile {
-  const RuleFile({required this.path, required this.paths, required this.body});
+  const RuleFile({
+    required this.path,
+    required this.paths,
+    required this.body,
+    this.crlf = false,
+  });
 
   /// Path on disk, as given to [parse].
   final String path;
@@ -16,6 +21,12 @@ class RuleFile {
 
   /// Everything after the frontmatter, trimmed.
   final String body;
+
+  /// Whether the content [parse] was given used CRLF line endings. [render]
+  /// restores them so appending a rule to a Windows-authored file does not
+  /// rewrite every line in it -- the same whole-file git noise the
+  /// deterministic index sorting exists to avoid.
+  final bool crlf;
 
   /// The text after `# ` on the body's first line, or an empty string if the
   /// body does not start with a `# ` heading. Used by [render] and exposed
@@ -35,6 +46,7 @@ class RuleFile {
   }
 
   static RuleFile? parse(String path, String content) {
+    final crlf = content.contains('\r\n');
     final normalized = content.replaceAll('\r\n', '\n');
     if (!normalized.startsWith('---\n')) return null;
 
@@ -80,11 +92,17 @@ class RuleFile {
             .toList();
     if (globs.isEmpty) return null;
 
-    return RuleFile(path: path, paths: globs, body: body);
+    return RuleFile(path: path, paths: globs, body: body, crlf: crlf);
   }
 
-  String render() =>
-      renderRuleFile(paths: paths, heading: heading, body: bodyWithoutHeading);
+  String render() {
+    final rendered = renderRuleFile(
+      paths: paths,
+      heading: heading,
+      body: bodyWithoutHeading,
+    );
+    return crlf ? rendered.replaceAll('\n', '\r\n') : rendered;
+  }
 }
 
 /// Renders a rule file. Always ends with a single trailing newline.

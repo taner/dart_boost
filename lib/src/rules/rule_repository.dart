@@ -70,13 +70,18 @@ class RuleRepository {
         ...current.paths,
         if (!current.paths.contains(normalized)) normalized,
       ];
-      content = renderRuleFile(
+      final rendered = renderRuleFile(
         paths: paths,
         heading: current.heading,
         body:
             '${current.bodyWithoutHeading}\n\n## $cleanTitle\n\n$cleanNote'
                 .trim(),
       );
+      // Restore the file's own line endings, the same deal the JSON and TOML
+      // splicers make: appending in LF to a CRLF file would rewrite every
+      // line, the whole-file git noise the deterministic index sorting
+      // exists to prevent.
+      content = current.crlf ? rendered.replaceAll('\n', '\r\n') : rendered;
     }
 
     _write(target.path, content);
