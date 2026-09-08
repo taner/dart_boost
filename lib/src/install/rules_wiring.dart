@@ -57,7 +57,8 @@ Future<RulesWiringOutcome> ensureDevDependency({
   if (dryRun) return RulesWiringOutcome.added;
 
   final agreed = await confirm(
-    'Add dart_boost as a dev dependency so agents can record project rules?',
+    'Run `dart pub add dev:dart_boost` to add it as a dev dependency so '
+    'agents can record project rules?',
   );
   if (!agreed) return RulesWiringOutcome.declined;
 

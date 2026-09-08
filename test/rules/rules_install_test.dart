@@ -108,5 +108,14 @@ void main() {
     ]);
 
     expect(second.output, contains('already up to date'));
+
+    // The rules row is idempotent on this run too -- it must report that
+    // with the same "nothing changed" marker every other unchanged row uses,
+    // not the one that means something was written.
+    final rulesLine = second.output
+        .split('\n')
+        .firstWhere((line) => line.contains('dart_boost (rules)'));
+    expect(rulesLine, contains('already a dev dependency'));
+    expect(rulesLine, isNot(contains('+')));
   });
 }

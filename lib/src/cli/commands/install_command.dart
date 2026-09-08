@@ -479,15 +479,18 @@ void _report(BoostCommand command, InstallReport report, InstallPlan plan) {
     }
     final rulesOutcome = report.rulesOutcome;
     if (rulesOutcome != null) {
-      final line = 'dart_boost (rules)'.padRight(28) + rulesOutcome.label;
+      final line = '${'dart_boost (rules)'.padRight(28)} ${rulesOutcome.label}';
       switch (rulesOutcome) {
         case RulesWiringOutcome.failed:
           logger.error(line);
         case RulesWiringOutcome.disabled:
         case RulesWiringOutcome.declined:
         case RulesWiringOutcome.skippedUnattended:
-          logger.skipped(line);
+        // Idempotent re-runs must not print the same `+` change marker as an
+        // actual write -- nothing changed on this line, same as every
+        // sibling row's "already up to date"/"unchanged" case.
         case RulesWiringOutcome.alreadyPresent:
+          logger.skipped(line);
         case RulesWiringOutcome.added:
           logger.success(line);
       }
