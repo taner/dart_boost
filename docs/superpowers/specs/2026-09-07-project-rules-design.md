@@ -1,6 +1,10 @@
 # Project rules for dart_boost
 
-Design, 2026-09-07. Status: approved, not implemented.
+Design, 2026-09-07. **Status: implemented and merged to `main` on 2026-09-08**
+as dart_boost 0.2.0, in 25 commits `1498c67..36eee3b`. The implementation plan is
+`docs/superpowers/plans/2026-09-07-project-rules.md`; it records which commits
+delivered each task. Deviations from this spec that were decided during
+implementation are noted in that plan's status block.
 
 ## The gap
 

@@ -18,6 +18,48 @@ FileSystem abstraction, `package:yaml`, `package:glob`, `package:test` +
 
 **Spec:** `docs/superpowers/specs/2026-09-07-project-rules-design.md`
 
+---
+
+## Status: COMPLETE
+
+Implemented and merged to `main` on 2026-09-08 as dart_boost 0.2.0 — 25 commits,
+`1498c67..36eee3b`. Every task passed a spec-compliance and quality review with fix
+rounds; the whole-branch review returned fix-then-ship and all seven of its items were
+applied. Suite went 409 -> **492 tests**; `dart analyze --fatal-infos` clean;
+`tool/verify_assets.dart` 42/42.
+
+Checkboxes below are ticked because every step ran. What each task actually delivered:
+
+| Task | Commits | Notes |
+| --- | --- | --- |
+| 1. Rule file + frontmatter | `1498c67`, `5b136d0` | Heading helpers made public (not private, as drafted) so Task 3 could reuse them. Fix: a closing delimiter of 4+ dashes leaked into the body. |
+| 2. Glob normalization + area routing | `f04bac3`, `c2780a0`, `ad23b2e` | Two fix rounds. `normalizeGlob` now rejects ANY absolute path not under the root, not just `../` escapes — this plan's own test asserted the opposite and was wrong. |
+| 3. RuleRepository | `3f056b6` | Clean first pass. |
+| 4. `rules index` | `7408715`, `576d07a` | Also created `test/support/cli_harness.dart`, which tasks 7-10 consume. Fix: `--dry-run` falsely claimed it wrote. |
+| 5. State split | `c9cb175`, `a4a71e6` | `dependency_drift.dart` needed no change, contrary to this plan. Fix: a wrong-typed observation key became empty instead of unknown. |
+| 6. MCP server + `record_rule` | `70e44ee` | `dart_mcp`'s real API differs from the sketch here. `pubspec.lock` stays uncommitted (this plan was wrong); the `--directory=` smoke-test flag does not exist. |
+| 7. Install wiring | `ad6f457`, `97ed381` | MCP write lives in `installer.dart`, not `install_command.dart`. `McpWriter.write` now takes a list of specs. Fix: the consent paths shipped untested. |
+| 8. Guidelines stanza | `ad487db`, `3031b10` | Fragment key is `project`, not `rules` — `rules` would render `=== rules rules ===`. Fix: hedged for when `record_rule` is absent. |
+| 9. infer-conventions | `355ae95`, `f77ff2e` | Fix: a test assertion was vacuous and passed with the whole checklist deleted. |
+| 10. doctor + 0.2.0 docs | `0d2f9c5`, `633c0b7` | **`doctor` uses a static check, NOT `McpCommandResolver.probe`** — probing appends `--version` to a stdio server that blocks on stdin, which would hang `doctor` forever. Fix: the README still claimed dart_boost ships no MCP server. |
+| Final review fixes | `7e6319f`, `6889066`, `ee059ec`, `6cbd113`, `c9ff521`, `36eee3b` | In-process MCP coverage (this plan promised it and Task 6 never delivered it); CRLF restored on write; `infer-conventions.md` given the fallback it forbade; doctor's `dev dependency` label corrected; no-op marker and consent-prompt wording fixed; two false doc claims corrected. |
+
+### Known-and-accepted, not fixed
+
+- `update` silently adopts newly-detected agents, including ones deselected at install
+  (pre-existing, found while testing 0.1.0; unrelated to this work).
+- `--rules` cannot re-enable rules once persisted off; only editing `dart_boost.json`
+  does. Consistent with the existing `guidelines`/`mcp` flags.
+- `--no-rules` does not remove a `dart_boost` MCP entry a previous run wrote. The server
+  self-gates and registers zero tools, so it is inert.
+- A malformed rule file is silent on the `record_rule` path; `rules index` and `doctor`
+  report it.
+- Index rows sort by plain string compare, so `models-2.md` precedes `models.md`.
+- `install_integration_test.dart` still has its own CLI runner rather than using the
+  shared harness.
+
+---
+
 ## Global Constraints
 
 - **SDK floor is `^3.7.0`.** `package:dart_mcp` matches it exactly. Do not raise it.
@@ -53,7 +95,7 @@ FileSystem abstraction, `package:yaml`, `package:glob`, `package:test` +
   and `String renderRuleFile({required List<String> paths, required String heading, required String body})`.
   `parse` returns `null` for content with no valid `paths` frontmatter.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rule_file_test.dart
@@ -150,12 +192,12 @@ Use `int` cents.
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rule_file_test.dart`
 Expected: FAIL -- `Error: Couldn't resolve the package 'dart_boost' ... rule_file.dart` (the file does not exist).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```dart
 // lib/src/rules/rule_file.dart
@@ -244,12 +286,12 @@ String renderRuleFile({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `dart test test/rules/rule_file_test.dart`
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Format, analyze, commit**
+- [x] **Step 5: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos
@@ -273,7 +315,7 @@ git commit -m "Add the rule file model and its frontmatter parser"
   `List<String> filenameCandidates(String glob)` (slug candidates, shortest first, always non-empty -- falls back to `['general']`),
   `String? normalizeGlob(String glob, {required String projectRoot})` returning `null` when the glob escapes the root.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rule_area_test.dart
@@ -345,12 +387,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rule_area_test.dart`
 Expected: FAIL -- `rule_area.dart` does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```dart
 // lib/src/rules/rule_area.dart
@@ -414,12 +456,12 @@ String? normalizeGlob(String glob, {required String projectRoot}) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `dart test test/rules/rule_area_test.dart`
 Expected: PASS, 11 tests.
 
-- [ ] **Step 5: Format, analyze, commit**
+- [x] **Step 5: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos
@@ -442,7 +484,7 @@ git commit -m "Add glob normalization and area routing for project rules"
   `class RuleRepository { RuleRepository({required FileSystem fileSystem, required Directory projectRoot, bool dryRun = false}); String get directory; String get indexPath; RuleWriteResult write({required String glob, required String title, required String note}); List<RuleFile> readAll({void Function(String)? onWarning}); bool writeIndex({void Function(String)? onWarning}); }`.
   `write` throws `ArgumentError` only for an un-normalizable glob; callers validate first.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rule_repository_test.dart
@@ -555,12 +597,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rule_repository_test.dart`
 Expected: FAIL -- `rule_repository.dart` does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```dart
 // lib/src/rules/rule_repository.dart
@@ -763,12 +805,12 @@ class RuleRepository {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `dart test test/rules/rule_repository_test.dart`
 Expected: PASS, 8 tests.
 
-- [ ] **Step 5: Format, analyze, commit**
+- [x] **Step 5: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos
@@ -789,12 +831,12 @@ git commit -m "Add RuleRepository: write rules, regenerate the glob index"
 - Consumes: `RuleRepository` (Task 3); the existing `BoostCommand` base in `lib/src/cli/commands/boost_command.dart` and `CliContext` in `lib/src/cli/context.dart`.
 - Produces: `class RulesCommand extends Command<int>` with subcommand `index`, registered under name `rules`.
 
-- [ ] **Step 1: Read the existing command shape**
+- [x] **Step 1: Read the existing command shape**
 
 Run: `sed -n '1,60p' lib/src/cli/commands/doctor_command.dart && sed -n '1,80p' lib/src/cli/runner.dart`
 Mirror that constructor signature, context plumbing and exit-code convention exactly rather than inventing a new one.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```dart
 // test/rules/rules_command_test.dart
@@ -849,12 +891,12 @@ If `test/support/cli_harness.dart` does not already expose a `runCli` helper,
 reuse whatever `test/install_integration_test.dart` uses to drive the runner and
 capture output, and add the helper there rather than duplicating it.
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `dart test test/rules/rules_command_test.dart`
 Expected: FAIL -- `Could not find a command named "rules"`.
 
-- [ ] **Step 4: Write minimal implementation**
+- [x] **Step 4: Write minimal implementation**
 
 ```dart
 // lib/src/cli/commands/rules_command.dart
@@ -915,17 +957,17 @@ class _RulesIndexCommand extends Command<int> {
 Adjust `context.projectRoot`, `context.fileSystem` and `context.logger` to the
 real member names on `CliContext` as read in Step 1.
 
-- [ ] **Step 5: Register the command**
+- [x] **Step 5: Register the command**
 
 In `lib/src/cli/runner.dart`, add `RulesCommand(context)` next to the existing
 `addCommand(...)` calls, with the matching import.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `dart test test/rules/rules_command_test.dart`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 7: Format, analyze, commit**
+- [x] **Step 7: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -952,7 +994,7 @@ git commit -m "Add `rules index` to regenerate the rule index by hand"
   `class MachineStateStore { const MachineStateStore(FileSystem, Directory projectRoot); static const relativePath = '.dart_tool/dart_boost/state.json'; File get file; MachineState? read({void Function(String)? onWarning}); void write(MachineState); }`.
   `BoostStateStore.read` returns a record `({BoostState state, MachineState? migrated})` so a v1 file's observations survive the split.
 
-- [ ] **Step 1: Write the failing migration test**
+- [x] **Step 1: Write the failing migration test**
 
 ```dart
 // test/state_migration_test.dart
@@ -1055,12 +1097,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/state_migration_test.dart`
 Expected: FAIL -- `machine_state.dart` does not exist and `read()` returns `BoostState?`.
 
-- [ ] **Step 3: Create `machine_state.dart`**
+- [x] **Step 3: Create `machine_state.dart`**
 
 Move `LastRun` out of `boost_state.dart` into `machine_state.dart` verbatim, and
 add beside it:
@@ -1187,7 +1229,7 @@ class MachineStateStore {
 }
 ```
 
-- [ ] **Step 4: Reduce `boost_state.dart` to choices**
+- [x] **Step 4: Reduce `boost_state.dart` to choices**
 
 Remove `dependencies`, `fragments`, `lastRun` and the `LastRun` class from
 `boost_state.dart`; import `LastRun` from `machine_state.dart` where still
@@ -1242,7 +1284,7 @@ it through the constructor, `copyWith` and `toJson`/`fromJson`, and change
 `BoostState.fromJson` must force `schemaVersion` to `currentSchemaVersion` so a
 read-then-write upgrades the file.
 
-- [ ] **Step 5: Update the call sites**
+- [x] **Step 5: Update the call sites**
 
 Run: `grep -rn 'BoostStateStore\|\.lastRun\|\.dependencies\|\.fragments' lib/ test/ | grep -v machine_state`
 
@@ -1252,14 +1294,14 @@ from `MachineStateStore`, and when `read()` returns a non-null `migrated`, write
 it to `MachineStateStore` before using it. Drift comparisons now source their
 baseline from `MachineState`.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `dart test`
 Expected: PASS. Existing `state_test.dart` assertions about `dependencies` on
 `dart_boost.json` must move to `MachineState`; update them rather than deleting
 them.
 
-- [ ] **Step 7: Format, analyze, commit**
+- [x] **Step 7: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -1281,7 +1323,7 @@ git commit -m "Split dart_boost.json into committed choices and per-machine stat
 - Produces: `class DartBoostMcpServer extends MCPServer with ToolsSupport { DartBoostMcpServer(StreamChannel<String> channel, {required RuleRepository repository, required bool rulesEnabled}); }`
   registering a tool named `record_rule` with required string parameters `glob`, `title`, `note`.
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 ```bash
 dart pub add dart_mcp
@@ -1292,7 +1334,7 @@ e.g. `dart_mcp: ^0.5.2 # labs.dart.dev; the only file that touches it is lib/src
 
 Run: `dart pub get` and confirm the SDK floor did not move.
 
-- [ ] **Step 2: Read the package's server API before writing against it**
+- [x] **Step 2: Read the package's server API before writing against it**
 
 Run: `cat $(dart pub cache list --format=json > /dev/null 2>&1; find ~/.pub-cache/hosted -maxdepth 2 -type d -name 'dart_mcp-*' | head -1)/example/*.dart 2>/dev/null | head -60`
 
@@ -1300,7 +1342,7 @@ Run: `cat $(dart pub cache list --format=json > /dev/null 2>&1; find ~/.pub-cach
 constructor, `registerTool` signature and result types from the installed
 version rather than from this plan, and adjust the code below to match.
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 ```dart
 // test/rules/rules_server_test.dart
@@ -1365,12 +1407,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [x] **Step 4: Run test to verify it fails**
 
 Run: `dart test test/rules/rules_server_test.dart`
 Expected: FAIL -- `rules_server.dart` does not exist.
 
-- [ ] **Step 5: Write the implementation**
+- [x] **Step 5: Write the implementation**
 
 Keep the validation in a plain function so it is testable without an MCP
 transport; the server is the adapter.
@@ -1444,7 +1486,7 @@ Then add the `MCPServer` subclass in the same file, wiring a `record_rule` tool
 whose handler calls `recordRule` and maps `RecordRuleResult` onto the version's
 tool-result type. Register the tool only when `rulesEnabled` is true.
 
-- [ ] **Step 6: Write `bin/mcp.dart`**
+- [x] **Step 6: Write `bin/mcp.dart`**
 
 ```dart
 // bin/mcp.dart
@@ -1474,12 +1516,12 @@ Future<void> main(List<String> args) async {
 Add `serveRules` to `rules_server.dart` wrapping stdin/stdout in the
 `StreamChannel<String>` the installed `dart_mcp` expects.
 
-- [ ] **Step 7: Run test to verify it passes**
+- [x] **Step 7: Run test to verify it passes**
 
 Run: `dart test test/rules/rules_server_test.dart`
 Expected: PASS, 3 tests.
 
-- [ ] **Step 8: Smoke-test the real transport**
+- [x] **Step 8: Smoke-test the real transport**
 
 ```bash
 mkdir -p /tmp/mcp-smoke && cd /tmp/mcp-smoke
@@ -1490,7 +1532,7 @@ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion
 Expected: a JSON-RPC result naming the server. If the invocation form differs on
 the installed `dart_mcp`, fix it here rather than discovering it at install time.
 
-- [ ] **Step 9: Format, analyze, commit**
+- [x] **Step 9: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -1514,7 +1556,7 @@ git commit -m "Add an MCP server exposing record_rule"
   `enum RulesWiringOutcome { disabled, alreadyPresent, added, declined, skippedUnattended, failed }` and
   `RulesWiringOutcome ensureDevDependency({required Project project, required ProcessRunner processes, required bool interactive, required bool dryRun, required bool Function(String) confirm, required void Function(String) log})`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rules_install_test.dart
@@ -1600,12 +1642,12 @@ void main() {
 Add `readJson` and `readFile` helpers to `test/support/cli_harness.dart` if they
 are not already there.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rules_install_test.dart`
 Expected: FAIL -- `.mcp.json` contains only the `dart` server.
 
-- [ ] **Step 3: Let `McpWriter` write several servers**
+- [x] **Step 3: Let `McpWriter` write several servers**
 
 Change the signature to `required List<McpServerSpec> specs` and build one
 splice map from all of them:
@@ -1620,7 +1662,7 @@ for JSON/JSONC, and the `Map<String, Map<String, Object?>>` equivalent for TOML.
 One report per agent, unchanged. Update every call site found by
 `grep -rn 'McpWriter(' lib/ test/`.
 
-- [ ] **Step 4: Add the dev-dependency step**
+- [x] **Step 4: Add the dev-dependency step**
 
 ```dart
 // lib/src/install/rules_wiring.dart
@@ -1687,7 +1729,7 @@ RulesWiringOutcome ensureDevDependency({
 Add `bool hasDependency(String name)` to `Project` if it does not exist, backed
 by the already-resolved direct dependency set.
 
-- [ ] **Step 5: Call it from install**
+- [x] **Step 5: Call it from install**
 
 In `install_command.dart`, before writing MCP config: if `state.rules.enabled`
 and `features.mcp`, call `ensureDevDependency`. Include the `dart_boost` spec
@@ -1709,13 +1751,13 @@ Reusing `dartSpec.command` means the FVM-pinned absolute path is inherited with
 no new resolution logic. Add `--[no-]rules` to install and update, defaulting to
 the saved choice, and report the outcome label in the existing summary block.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `dart test test/rules/rules_install_test.dart && dart test`
 Expected: PASS. `install_integration_test.dart` assertions that pin the exact
 `mcpServers` key set need updating to allow the second server.
 
-- [ ] **Step 7: Format, analyze, commit**
+- [x] **Step 7: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -1736,7 +1778,7 @@ git commit -m "Wire the rules MCP server into install behind a confirmed dev dep
 - Consumes: `assets.fragment(String key)` (existing).
 - Produces: fragment key `rules`, composed for every project.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rules_fragment_test.dart
@@ -1774,12 +1816,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rules_fragment_test.dart`
 Expected: FAIL -- output has no `=== rules rules ===` section.
 
-- [ ] **Step 3: Write the fragment**
+- [x] **Step 3: Write the fragment**
 
 ```markdown
 <!-- guidelines/rules.md -->
@@ -1808,7 +1850,7 @@ and follow it.
 The stanza is unconditional: a `hasProjectRules` flag would leave the first
 recorded rule unannounced until the next `install` or `update`.
 
-- [ ] **Step 4: Compose it**
+- [x] **Step 4: Compose it**
 
 In `lib/src/guidelines/composer.dart`, in the `// --- core (always) ---` block:
 
@@ -1818,13 +1860,13 @@ In `lib/src/guidelines/composer.dart`, in the `// --- core (always) ---` block:
 
 Place it after `add('foundation', ...)` and before `add('dart', ...)`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `dart test test/rules/rules_fragment_test.dart && dart test`
 Expected: PASS. `bundled_guidelines_test.dart` and `composer_test.dart` fragment
 counts and key lists need updating for the new always-on key.
 
-- [ ] **Step 6: Format, analyze, commit**
+- [x] **Step 6: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -1846,7 +1888,7 @@ git commit -m "Compose a project-rules stanza into every project's guidelines"
 - Produces: `File? BundledAssets.asset(String relativePath)` and a written
   `.ai/infer-conventions.md` in the target project.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/infer_conventions_test.dart
@@ -1889,12 +1931,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/infer_conventions_test.dart`
 Expected: FAIL -- the file is not written.
 
-- [ ] **Step 3: Write the procedure**
+- [x] **Step 3: Write the procedure**
 
 Create `assets/infer-conventions.md`. It is prose the agent follows, so write it
 as instructions, and include every rule below verbatim in substance:
@@ -1957,7 +1999,7 @@ lines. Do not write rule files by hand -- the index is regenerated by the tool,
 and a hand-written file stays invisible until it is.
 ```
 
-- [ ] **Step 4: Expose and write the asset**
+- [x] **Step 4: Expose and write the asset**
 
 In `bundled_assets.dart`, add alongside `guidelines`:
 
@@ -1979,18 +2021,18 @@ Resolve `assets` next to `guidelines` in the same locator, and in
 `.ai/infer-conventions.md` through `AtomicWriter`, only when `rules.enabled`,
 reporting it in the existing file-summary block.
 
-- [ ] **Step 5: Extend the packaging guard**
+- [x] **Step 5: Extend the packaging guard**
 
 In `tool/verify_assets.dart`, verify both trees. Replace the single `guidelines`
 directory with a loop over `['guidelines', 'assets']`, keeping the existing
 manifest parsing and failure messages.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `dart test test/rules/infer_conventions_test.dart && dart test && dart run tool/verify_assets.dart`
 Expected: PASS, and the asset guard confirms both trees survive packaging.
 
-- [ ] **Step 7: Format, analyze, commit**
+- [x] **Step 7: Format, analyze, commit**
 
 ```bash
 dart format . && dart analyze --fatal-infos && dart test
@@ -2010,7 +2052,7 @@ git commit -m "Ship the infer-conventions procedure and guard the assets tree"
 - Consumes: everything above.
 - Produces: no new public API.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 // test/rules/rules_doctor_test.dart
@@ -2053,12 +2095,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `dart test test/rules/rules_doctor_test.dart`
 Expected: FAIL -- no `Rules` section in the doctor output.
 
-- [ ] **Step 3: Add the doctor section**
+- [x] **Step 3: Add the doctor section**
 
 Follow the existing section formatting in `doctor_command.dart` exactly. Report:
 the rules directory and whether it exists, the number of parsed rule files and
@@ -2066,12 +2108,12 @@ any that failed to parse, whether `dart_boost` is a dev dependency, the server
 command, and the probe result -- reusing `McpCommandResolver.probe` the way the
 `dart mcp-server` line already does.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `dart test test/rules/rules_doctor_test.dart && dart test`
 Expected: PASS.
 
-- [ ] **Step 5: Update the docs**
+- [x] **Step 5: Update the docs**
 
 - `README.md`: add a **Project rules** section covering `.ai/rules/`, the index,
   `record_rule`, `infer-conventions` and `rules index`. Remove "path-scoped
@@ -2084,7 +2126,7 @@ Expected: PASS.
   409 before this work) and note that the Phase 1-3 pass predates rules.
 - `pubspec.yaml`: bump `version` to `0.2.0`.
 
-- [ ] **Step 6: Full verification**
+- [x] **Step 6: Full verification**
 
 ```bash
 dart format --set-exit-if-changed . \
@@ -2095,7 +2137,7 @@ dart format --set-exit-if-changed . \
 
 Expected: all four clean. Record the resulting test count for `VERIFICATION.md`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
