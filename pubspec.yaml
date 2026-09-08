@@ -3,7 +3,7 @@ description: >-
   Version-aware AI coding guidelines and multi-agent wiring for Dart and
   Flutter: composes guidance from resolved versions, wires up dart
   mcp-server, and its own rules MCP server.
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/taner/dart_boost
 repository: https://github.com/taner/dart_boost
 issue_tracker: https://github.com/taner/dart_boost/issues

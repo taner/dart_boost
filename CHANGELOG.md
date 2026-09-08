@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- **Adds an example.** `example/README.md` walks a real session: install,
+  recording a rule, bootstrapping rules from an existing codebase, and reading
+  `doctor`. pub.dev renders it as the package's Example tab, which was empty.
+  No behaviour changed.
+
 ## 0.2.0
 
 Project rules: dart_boost's own MCP server, so agents record durable
