@@ -35,8 +35,15 @@ architectural work; a ten-task plan for a six-line fix is waste.
    whose boxes are unticked and a spec still saying "not implemented" have both
    happened here.
 
-Never write to `docs/superpowers/specs/` or `docs/superpowers/plans/`. Those
-hold the project-rules change from before this setup — history, not truth.
+Never write design docs or plans into `docs/`; new reasoning belongs in the
+OpenSpec change. What is already there:
+
+- `docs/design/` — the project-rules design from before this setup. Reasoning,
+  not current truth. Closed; do not add to it.
+- `docs/known-issues.md` — accepted gaps between the specs and the
+  implementation. Real, understood, deliberately unfixed.
+- `docs/reference/laravel-boost.md` — the Boost comparison this project is
+  measured against.
 
 ### Two things that will bite you
 
@@ -50,9 +57,6 @@ existing capability is `ADDED`. Get it wrong and archive refuses the delta. Run
 `openspec validate <change>` before you start implementing — it reports exactly
 this as `Archive would refuse this delta`, and it is far cheaper to learn then
 than at the end.
-
-`docs/superpowers/` holds the project-rules change from before this setup. It is
-history, not current truth; do not add to it.
 
 ## Constraints that bind every change
 

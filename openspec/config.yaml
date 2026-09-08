@@ -26,7 +26,7 @@ context: |
   means author the change folder and implement with TDD, architectural means
   also run `superpowers:writing-plans` into this change's folder and build with
   `superpowers:subagent-driven-development`. Never write to
-  `docs/superpowers/`. After the branch merges, archive the change so the specs
+  `docs/`. After the branch merges, archive the change so the specs
   become true again.
 
 # Project context (optional)

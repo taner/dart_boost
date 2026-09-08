@@ -1,10 +1,17 @@
 # Project rules for dart_boost
 
 Design, 2026-09-07. **Status: implemented and merged to `main` on 2026-09-08**
-as dart_boost 0.2.0, in 25 commits `1498c67..36eee3b`. The implementation plan is
-`docs/superpowers/plans/2026-09-07-project-rules.md`; it records which commits
-delivered each task. Deviations from this spec that were decided during
-implementation are noted in that plan's status block.
+as dart_boost 0.2.0, in 25 commits `1498c67..36eee3b`.
+
+This is a record of the reasoning, not current truth: `openspec/specs/` says what
+the system does today, and the code says how. Kept because the arguments here —
+why `record_rule` is a callable tool while `infer-conventions` is markdown, what
+was deliberately left out of scope, and which risks were accepted — are not
+recoverable from requirements or from git history.
+
+The implementation plan that accompanied it was deleted once spent; its steps
+are the commits in that range. Gaps between this design and the shipped code are
+recorded in `docs/known-issues.md`.
 
 ## The gap
 
