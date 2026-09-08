@@ -2,6 +2,9 @@
 
 Captured 2026-09-07 from <https://laravel.com/framework/docs/boost>, cross-checked
 against the `laravel/boost` clone at `../laravel-boost` (HEAD 2026-09-05).
+Re-verified 2026-09-08 against the docs markdown source: every table here — the
+MCP tools, the guideline and skill inventories, and the Documentation API's
+version coverage — still matches upstream.
 
 dart_boost is the Dart counterpart to this. This file exists so its design can be
 compared against the current Boost, not the Boost of a year ago.
@@ -31,8 +34,8 @@ php artisan boost:update      # refresh published resources
 php artisan boost:update --discover   # also scan for newly installed packages
 ```
 
-Boost suggests `.gitignore`-ing `.mcp.json`, `CLAUDE.md`, `AGENTS.md` and
-`boost.json` since they regenerate. `.ai/rules/` is the exception — commit it.
+Boost suggests `.gitignore`-ing `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `junie/`
+and `boost.json` since they regenerate. `.ai/rules/` is the exception — commit it.
 
 ## MCP server
 
