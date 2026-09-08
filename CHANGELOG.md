@@ -45,6 +45,15 @@ project-specific decisions instead of re-deriving them every session.
   does not understand `--version`, so spawning it to check would just hang
   `doctor`. The real question — will an agent be able to start this? — has a
   static answer: only when dart_boost is a resolved dependency.
+- **`update` no longer adopts agents on its own.** It configures exactly the
+  agents recorded by the last `install`. An agent installed since then is
+  reported — `Cursor was installed since the last run` — and left alone, rather
+  than being configured silently. The old behaviour wrote guidelines and MCP
+  config to agents that had never been selected, and because `update` skips the
+  confirmation prompt by contract, an unattended run gave you nothing to say no
+  to. Adding an agent is now a deliberate act: `install`, or `--agents=`. This
+  also means an agent you deliberately left unticked stays unticked instead of
+  being re-offered on every run.
 - **State file split.** `dart_boost.json` now holds only what a human chose
   (agents, feature flags, trusted packages, whether rules are on); the
   observations a previous run recorded (resolved dependency versions, the

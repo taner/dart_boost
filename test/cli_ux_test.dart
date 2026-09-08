@@ -364,6 +364,36 @@ void main() {
       expect(dialogs.questions, isEmpty);
       expect(state()['agents'], <String>['claude_code']);
     });
+
+    test('reports an agent installed since the last run without '
+        'configuring it', () async {
+      await installed();
+      // `.cursor/` in the project is what makes Cursor detectable. It was not
+      // chosen at install, so an unattended update must not act on it.
+      Directory(p.join(appDir(), '.cursor')).createSync(recursive: true);
+
+      final code = await run(['-C', appDir(), 'update', '--yes']);
+
+      expect(code, 0);
+      final report = output.join('\n');
+      expect(report, contains('Cursor'));
+      expect(report, contains('install'));
+
+      expect(appFile('.cursor/mcp.json').existsSync(), isFalse);
+      expect(appFile('AGENTS.md').existsSync(), isFalse);
+      expect(state()['agents'], <String>['claude_code']);
+    });
+
+    test('still configures every agent on file', () async {
+      await installed();
+      Directory(p.join(appDir(), '.cursor')).createSync(recursive: true);
+
+      final code = await run(['-C', appDir(), 'update', '--yes']);
+
+      expect(code, 0);
+      expect(appFile('CLAUDE.md').existsSync(), isTrue);
+      expect(appFile('.mcp.json').existsSync(), isTrue);
+    });
   });
 
   group('skills delegation', () {

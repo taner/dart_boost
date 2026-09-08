@@ -398,6 +398,13 @@ That confirmation is skipped by `--yes`, by `--dry-run` (which writes nothing
 anyway), in CI, and by `update`, whose whole contract is to repeat the answers
 already on file without re-asking.
 
+Because that prompt is skipped, `update` never adopts an agent on its own.
+Install Cursor after your last run and `update` says so — `Cursor was installed
+since the last run` — but configures only the agents on file. Adding one is a
+deliberate act: run `install`, or pass `--agents=`. The same follows for an
+agent you saw in the picker and deliberately left unticked; it stays unticked
+rather than being re-offered on every run.
+
 ## State
 
 `install` writes two state files, split by who they are for.

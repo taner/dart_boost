@@ -293,7 +293,13 @@ Future<List<Agent>?> _selectAgents(
     logger.detail('detected ${entry.agent.name} (${entry.reason})');
   }
 
-  // `update` repeats the previous run's choices, plus anything newly installed.
+  // `update` repeats the previous run's choices and nothing else. Detection
+  // decides what to *offer* on a first install; it must never decide what to
+  // *configure* on a re-run, because `update` skips the confirmation prompt by
+  // contract -- so adopting a newly installed agent here would write files to
+  // an agent the user never chose, with nothing to say no to. Deriving the
+  // selection from saved state also means an agent deliberately unticked at
+  // install stays unticked, rather than being re-offered on every run.
   final preselected = <String>{
     ...?previous?.agents,
     if (!isUpdate || previous == null)
@@ -307,8 +313,10 @@ Future<List<Agent>?> _selectAgents(
             )
             .toList();
     for (final entry in fresh) {
-      logger.info('New agent detected since the last run: ${entry.agent.name}');
-      preselected.add(entry.agent.key);
+      logger.info(
+        '${entry.agent.name} was installed since the last run. `update` '
+        'configures only the agents on file -- run `install` to add it.',
+      );
     }
   }
 
