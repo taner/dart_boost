@@ -1,8 +1,8 @@
 name: dart_boost
 description: >-
-  Version-aware AI coding guidelines and one-command multi-agent wiring for Dart
-  and Flutter. Composes guidance from the versions your project resolved and
-  wires up dart mcp-server.
+  Version-aware AI coding guidelines and multi-agent wiring for Dart and
+  Flutter: composes guidance from resolved versions, wires up dart
+  mcp-server, and its own rules MCP server.
 version: 0.2.0
 homepage: https://github.com/taner/dart_boost
 repository: https://github.com/taner/dart_boost

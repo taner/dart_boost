@@ -14,7 +14,8 @@ project-specific decisions instead of re-deriving them every session.
   glob and the file that backs it. The guidelines stanza tells every agent to
   check the index before touching a file and read only the matching rows, so
   a large project's rules do not all land in context at once. The server
-  never crashes on a malformed rule file; it skips it and warns.
+  never crashes on a malformed rule file; it skips it silently, and
+  `dart_boost rules index` and `doctor` are what report it.
 - **`dart_boost rules index`.** Regenerates the index from whatever is on
   disk without touching the rule files themselves — for the one case that
   bypasses `record_rule`: a rule file added or edited by hand, or a merge
