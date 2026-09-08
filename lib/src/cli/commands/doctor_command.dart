@@ -155,7 +155,7 @@ class DoctorCommand extends BoostCommand {
     );
     final rulesDirExists =
         context.fileSystem.directory(rulesRepository.directory).existsSync();
-    final isDevDependency = project.package('dart_boost')?.isDirect ?? false;
+    final dartBoostPackage = project.package('dart_boost');
     final rulesEnabled =
         context.stateStore(project.root).read()?.state.rules.enabled ?? true;
 
@@ -177,11 +177,18 @@ class DoctorCommand extends BoostCommand {
                 '$failedRuleCount failed to parse',
       )
       ..field(
-        'dev dependency',
-        isDevDependency
-            ? 'yes'
-            : 'not a dev dependency -- the rules server will not start '
+        'dependency',
+        // The check is really "will `dart run dart_boost:mcp` resolve?",
+        // which is `isDirect` regardless of dev vs. regular -- only the label
+        // distinguishes them, so a regular dependency isn't misreported as a
+        // dev one.
+        switch (dartBoostPackage?.isDirect) {
+          true when dartBoostPackage!.isDev => 'yes (dev)',
+          true => 'yes (regular)',
+          _ =>
+            'not a dev dependency -- the rules server will not start '
                 '(`dart run dart_boost:mcp` cannot resolve)',
+        },
       )
       ..field('server command', '${spec.command} run dart_boost:mcp')
       ..field('enabled', rulesEnabled ? 'yes' : 'no (see dart_boost.json)');

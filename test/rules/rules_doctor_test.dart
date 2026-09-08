@@ -29,6 +29,24 @@ void main() {
     expect(result.output, contains('Rules'));
     expect(result.output, contains('1 rule file'));
     expect(result.output, contains('dart run dart_boost:mcp'));
+    // The dependency check is "is it direct at all", but the label must not
+    // claim a dev dependency is present unless it actually is.
+    expect(result.output, contains('yes (dev)'));
+  });
+
+  test('doctor reports a regular (non-dev) dependency accurately', () async {
+    await d.dir('app', <d.Descriptor>[
+      d.file(
+        'pubspec.yaml',
+        'name: app\nenvironment:\n  sdk: ^3.7.0\n'
+            'dependencies:\n  dart_boost: ^0.2.0\n',
+      ),
+    ]).create();
+
+    final result = await runCli(<String>['doctor', '-C', d.path('app')]);
+
+    expect(result.output, contains('yes (regular)'));
+    expect(result.output, isNot(contains('yes (dev)')));
   });
 
   test(
