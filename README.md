@@ -64,15 +64,17 @@ to date" and leaves `git status` empty.
 
 ## Why this and not a Boost port
 
-Laravel Boost bundles three things: an MCP server, a curated guideline library,
-and an installer that wires both into your agents. Two of those already exist in
-the Dart ecosystem, and are better than anything a port would produce:
+Laravel Boost bundles four things: an MCP server, a curated guideline library, a
+hosted documentation API, and an installer that wires them into your agents. Two
+of them already exist in the Dart ecosystem, and are better than anything a port
+would produce:
 
 | Boost capability | Dart/Flutter equivalent |
 | --- | --- |
 | MCP server with ~11 introspection tools | **`dart mcp-server`**, in the SDK. ~24 tools — `analyze_files`, `lsp`, `run_tests`, `dart_fix`, `pub_dev_search`, `hot_reload`, `widget_inspector`, `get_runtime_errors`, `vm_service` — and it attaches to a *running* app over DTD. |
 | Package-shipped guidelines | **Agent Skills**. `dart run skills@ get` reads your pubspec and installs into `.claude/skills/`, `.cursor/skills/`, and the rest. |
 | Curated first-party library | **`flutter/agent-plugins`** and **`dart-lang/skills`**. |
+| Hosted documentation API — 17,000+ entries, semantic search | **Nothing equivalent.** See below. |
 
 So dart_boost does not port Boost's MCP server wholesale — `dart mcp-server`'s
 ~24 introspection tools already cover that ground better than a port would,
@@ -82,7 +84,7 @@ run via `dart run dart_boost:mcp`. Recording a rule mid-session needs
 something an agent can *call*, and neither `dart mcp-server` nor any existing
 package gives it one, so that is the one place a small server earns its keep
 — everything else it might have reimplemented, it doesn't. What is genuinely
-missing beyond that is the other two thirds:
+missing from the ecosystem, and what this package supplies, is the next two:
 
 1. **A unified installer.** Wiring a project up today means `claude plugin
    install …` *and* `npx skills add …` *and* hand-editing `.vscode/mcp.json`
@@ -93,6 +95,25 @@ missing beyond that is the other two thirds:
    resolved versions — Flutter 3.47 vs 3.44, Riverpod 2 vs 3, go_router 14 vs
    18 — or composes one project-tailored file. This is Boost's real
    differentiator and it had no Dart analog.
+
+### What Boost has that this does not
+
+Boost also ships a hosted documentation API: 17,000-odd pieces of Laravel
+ecosystem documentation behind semantic search, scoped to the packages you have
+installed, which its guidelines tell agents to query when they need an answer.
+dart_boost has no equivalent and does not pretend to. `dart mcp-server`'s
+`pub_dev_search` finds *packages*, not their documentation.
+
+The two are not substitutes. Composed guidelines are what an agent knows before
+it starts — a fixed budget, chosen by your resolved versions. A documentation
+API is what it can go and look up mid-task, which is unbounded and covers
+questions no guideline anticipated. dart_boost does the first well and leaves
+the second to whatever the agent already has.
+
+Closing that gap means ingestion, embeddings and a service to run, which is a
+different kind of project from a CLI that writes files and exits. If you need
+version-accurate API detail an agent cannot infer, put it in a fragment or a
+project rule.
 
 ## How version keying works
 
