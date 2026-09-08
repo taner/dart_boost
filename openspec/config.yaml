@@ -20,12 +20,14 @@ context: |
   - Tests are hermetic: no network, no subprocesses outside FakeProcessRunner.
 
   How changes are built here: OpenSpec owns the spec and the living capability
-  set. The superpowers skills own execution -- `superpowers:brainstorming` to
-  shape the change, `superpowers:writing-plans` for the implementation plan,
-  then `superpowers:subagent-driven-development` to build it with per-task
-  review. Write the plan into this change's folder, not into
-  `docs/superpowers/plans/`. After the branch merges, run the archive step so
-  the specs above become true again.
+  set; the superpowers skills own execution. Every change gets an OpenSpec
+  change folder; only architectural work also gets a superpowers plan.
+  `superpowers:brainstorming` shapes the change and classifies it -- bounded
+  means author the change folder and implement with TDD, architectural means
+  also run `superpowers:writing-plans` into this change's folder and build with
+  `superpowers:subagent-driven-development`. Never write to
+  `docs/superpowers/`. After the branch merges, archive the change so the specs
+  become true again.
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.

@@ -13,18 +13,43 @@ capabilities. Today: `project-rules`, `guidelines-composition`, `agent-wiring`.
 ## How changes get built
 
 OpenSpec owns *what* the project does. Superpowers owns *how* a change gets
-built. They do not overlap, and each change uses both:
+built.
 
-1. **`superpowers:brainstorming`** to shape the change. Write the resulting spec
-   into the OpenSpec change folder — **not** into `docs/superpowers/specs/`.
-2. **`superpowers:writing-plans`** for the implementation plan, written into the
-   same change folder rather than `docs/superpowers/plans/`.
-3. **`superpowers:subagent-driven-development`** to build it, with a review after
-   each task and a whole-branch review at the end.
-4. **After the branch merges, archive the change** so `openspec/specs/` becomes
-   true again. This step is not optional — skipping it is what makes a repo stop
-   being able to answer "what does this do?". A plan whose boxes are unticked and
-   a spec that still says "not implemented" have both happened here before.
+**Always: an OpenSpec change. Only when architectural: a superpowers plan.**
+Every change gets an OpenSpec change folder, because that is the mechanism that
+keeps `openspec/specs/` true. The heavy plan-and-subagent machinery is for
+architectural work; a ten-task plan for a six-line fix is waste.
+
+1. **`superpowers:brainstorming`** to shape the change and get approval. Its
+   classification decides the rest:
+   - **bounded** — author the OpenSpec change directly (`proposal.md`, the delta
+     under `specs/<capability>/`, `tasks.md`), then implement with TDD. No
+     superpowers plan document.
+   - **architectural** — also run **`superpowers:writing-plans`**, writing the
+     plan into the same change folder, then
+     **`superpowers:subagent-driven-development`** to build it with a review
+     after each task and a whole-branch review at the end.
+2. **After the branch merges, `openspec archive <change>`** so
+   `openspec/specs/` becomes true again. This step is not optional — skipping it
+   is what makes a repo stop being able to answer "what does this do?". A plan
+   whose boxes are unticked and a spec still saying "not implemented" have both
+   happened here.
+
+Never write to `docs/superpowers/specs/` or `docs/superpowers/plans/`. Those
+hold the project-rules change from before this setup — history, not truth.
+
+### Two things that will bite you
+
+**Brainstorming's "bounded" path says no spec file. That means no *superpowers*
+design doc — it does not mean skip the OpenSpec change.** The change folder is
+the mechanism that updates the specs, not design ceremony. Author it anyway.
+
+**`ADDED` vs `MODIFIED` in a delta spec.** `MODIFIED` requires the requirement
+header to already exist verbatim in the main spec; a *new* requirement inside an
+existing capability is `ADDED`. Get it wrong and archive refuses the delta. Run
+`openspec validate <change>` before you start implementing — it reports exactly
+this as `Archive would refuse this delta`, and it is far cheaper to learn then
+than at the end.
 
 `docs/superpowers/` holds the project-rules change from before this setup. It is
 history, not current truth; do not add to it.
