@@ -47,5 +47,8 @@ dependencies:
 
 dev_dependencies:
   lints: ^5.0.0
+  # Already resolved transitively via dart_mcp; declared directly only so the
+  # in-process MCP test can wire a client and server together over a channel.
+  stream_channel: ^2.1.4
   test: ^1.31.0 # first release whose SDK floor matches ours
   test_descriptor: ^2.0.0
