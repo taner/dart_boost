@@ -11,7 +11,11 @@ doc/api/
 *.iml
 .DS_Store
 
-# NOTE: never add `guidelines` (or any pattern matching it) to this file.
-# `dart pub publish` honours .gitignore, and the guidelines/ tree is the
-# package's payload -- excluding it produces a release that composes nothing.
-# tool/verify_assets.dart guards this in CI.
+# Agent worktrees created by the harness; never part of the package.
+.claude/worktrees/
+
+# NOTE: never add `guidelines` or `assets` (or any pattern matching them) to
+# this file. `dart pub publish` honours .gitignore, and both trees are the
+# package's payload -- excluding either produces a release that composes
+# nothing or ships without the infer-conventions procedure.
+# tool/verify_assets.dart guards both in CI.

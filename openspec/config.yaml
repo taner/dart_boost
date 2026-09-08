@@ -1,0 +1,59 @@
+schema: spec-driven
+
+context: |
+  dart_boost is a Dart CLI on pub.dev. It installs version-aware AI coding
+  guidelines and MCP configuration into nine coding agents, and records a
+  project's own decisions as glob-scoped rules under `.ai/rules/`.
+
+  It ships no runtime server beyond one purpose-built MCP tool (`record_rule`);
+  it deliberately does not reimplement the SDK's `dart mcp-server`.
+
+  Conventions that matter here:
+  - Dart SDK floor is `^3.7.0`. Do not raise it.
+  - Nothing throws: malformed input degrades with a warning, never aborts.
+  - Every user-file write goes through AtomicWriter (temp file + rename).
+  - Bundled assets are never dot-prefixed: `dart pub publish` strips
+    dot-prefixed paths, so a `.ai/` tree inside this package would vanish from
+    the release. `tool/verify_assets.dart` guards this.
+  - `dart format` and `dart analyze --fatal-infos` must be clean.
+  - Doc comments explain WHY a decision was made, not what the code does.
+  - Tests are hermetic: no network, no subprocesses outside FakeProcessRunner.
+
+  How changes are built here: OpenSpec owns the spec and the living capability
+  set. The superpowers skills own execution -- `superpowers:brainstorming` to
+  shape the change, `superpowers:writing-plans` for the implementation plan,
+  then `superpowers:subagent-driven-development` to build it with per-task
+  review. Write the plan into this change's folder, not into
+  `docs/superpowers/plans/`. After the branch merges, run the archive step so
+  the specs above become true again.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
