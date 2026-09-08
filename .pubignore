@@ -1,0 +1,28 @@
+# What `dart pub publish` leaves out of the archive.
+#
+# READ THIS BEFORE EDITING. When a `.pubignore` exists in a directory, pub uses
+# it *instead of* the `.gitignore` in that directory -- it does not merge them.
+# So this file has to repeat the build-output entries from `.gitignore`, and the
+# same trap applies here as there: never add `guidelines` or `assets` (or any
+# pattern matching them). Both trees are the package's payload, and excluding
+# either produces a release that composes nothing or ships without the
+# infer-conventions procedure. `tool/verify_assets.dart` checks this against the
+# real publish manifest and is what will catch you.
+
+# Mirrored from .gitignore, which this file displaces.
+.dart_tool/
+build/
+pubspec.lock
+doc/api/
+
+# Contributor material. Useful in the repository, noise in the archive: nobody
+# installing this package needs the design history, the spec tooling, or the
+# instructions for working on dart_boost itself. CLAUDE.md in particular would
+# be actively confusing, since this tool *writes* a CLAUDE.md into the projects
+# it is run against.
+docs/
+openspec/
+tool/
+test/
+CLAUDE.md
+VERIFICATION.md

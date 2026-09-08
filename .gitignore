@@ -14,8 +14,13 @@ doc/api/
 # Agent worktrees created by the harness; never part of the package.
 .claude/worktrees/
 
-# NOTE: never add `guidelines` or `assets` (or any pattern matching them) to
-# this file. `dart pub publish` honours .gitignore, and both trees are the
-# package's payload -- excluding either produces a release that composes
-# nothing or ships without the infer-conventions procedure.
-# tool/verify_assets.dart guards both in CI.
+# NOTE: publishing is governed by `.pubignore`, not this file. A `.pubignore`
+# in a directory *replaces* the `.gitignore` there rather than merging with it,
+# so the build-output entries above are repeated in `.pubignore` too -- change
+# one, change the other.
+#
+# Never add `guidelines` or `assets` (or any pattern matching them) to either
+# file. Both trees are the package's payload, and excluding either produces a
+# release that composes nothing or ships without the infer-conventions
+# procedure. tool/verify_assets.dart checks both against the real publish
+# manifest and is what will catch you.
